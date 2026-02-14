@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#020617" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8fafc" />
+
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+
+  <title>Layer Zero</title>
+
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <meta name="apple-mobile-web-app-title" content="Layer Zero" />
+
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#020617" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8fafc" />
+
+  <meta name="description" content="Klipper 3D Printer Control Dashboard" />
+  <link rel="apple-touch-icon" href="/pwa-192x192.png" />
+
+  <style>
+    html,
+    body,
+    #root {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      /* 스크롤은 내부 div에서 처리 */
+      background-color: #020617;
+      /* 초기 로딩 시 흰색 깜빡임 방지 (Dark 기준) */
+      /* iOS 롱터치 텍스트 선택/메뉴 방지 (앱 느낌 강화) */
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>
