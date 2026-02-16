@@ -1,44 +1,178 @@
+<div align="center">
+
 # Layer Zero
 
-![Layer Zero 홈 화면 (Light)](photo/docs/home-light.png)
+<p><strong>Klipper + Moonraker 기반 3D 프린터를 위한 모바일 친화형 통합 운영 콘솔</strong></p>
 
-> Klipper + Moonraker 기반 3D 프린터를 위한 모바일 친화형 통합 운영 콘솔
+<p>
+  <img src="photo/docs/home-light.png" alt="Layer Zero Home Light" width="48%" />
+  <img src="photo/docs/home-dark.png" alt="Layer Zero Home Dark" width="48%" />
+</p>
 
-![홈 대시보드 (Dark)](photo/docs/home-dark.png)
+<p>
+  <img src="https://img.shields.io/badge/React-19.2.0-61DAFB?logo=react&logoColor=white" alt="React" />
+  <img src="https://img.shields.io/badge/Vite-7.3.1-646CFF?logo=vite&logoColor=white" alt="Vite" />
+  <img src="https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white" alt="Node" />
+  <img src="https://img.shields.io/badge/State-Context%20API-7C3AED" alt="Context API" />
+  <img src="https://img.shields.io/badge/Realtime-SSE%20Sync-0EA5E9" alt="SSE" />
+  <img src="https://img.shields.io/badge/Process-PM2-2B037A" alt="PM2" />
+</p>
 
-## 프로젝트 소개
-Layer Zero는 "출력 준비 → 출력 중 모니터링/제어 → 완료 리포트/유지보수" 흐름을 한 곳에서 처리하기 위한 웹 애플리케이션입니다.
-
-기존처럼 여러 페이지를 오가며 상태를 확인하지 않아도, 홈 대시보드와 사이드 탭만으로 운영이 가능하도록 설계되어 있습니다.
-
-## 주요 특징
-- 실시간 대시보드: 진행률, 남은 시간, 온도, 속도, 팬, 비용 추정
-- Moonraker 제어: 콘솔 명령, 매크로, 긴급 정지, 자동 레벨링
-- 듀얼 웹캠: ESP32-CAM 2채널, 회전/반전/보정
-- AI 챗봇: Free/Paid 모드, 모델 선택, 대화 이력 동기화
-- 유지보수: 소모품 추적, 점검 체크리스트, 로그
-- 리포트: 출력 완료 데이터 자동 기록 및 상세 분석
-- 중앙 저장소: 다중 기기에서 동일 데이터 공유 (SSE 실시간 동기화)
-
-## 화면 미리보기
-### 홈 / 프린터 / 웹캠
-| 홈 | 프린터 | 웹캠 |
-|---|---|---|
-| ![홈](photo/docs/home-light.png) | ![프린터](photo/docs/printer-light.png) | ![웹캠](photo/docs/webcam-light.png) |
-
-### AI 챗봇 / 유지보수 / 리포트
-| AI 챗봇 | 유지보수 | 리포트 |
-|---|---|---|
-| ![챗봇](photo/docs/chatbot-light.png) | ![유지보수](photo/docs/maintenance-light.png) | ![리포트](photo/docs/reports-light.png) |
-
-### 3D 도안 / 도구 / 설정
-| 3D 도안 | 도구 | 설정 |
-|---|---|---|
-| ![3D 도안](photo/docs/models-models-light.png) | ![도구](photo/docs/tools-light.png) | ![설정](photo/docs/settings-light.png) |
+</div>
 
 ---
 
-## 빠른 시작 (로컬 개발)
+## 목차
+- [프로젝트 개요](#프로젝트-개요)
+- [핵심 기능](#핵심-기능)
+- [화면 둘러보기](#화면-둘러보기)
+- [아키텍처](#아키텍처)
+- [기술 스택](#기술-스택)
+- [빠른 시작](#빠른-시작)
+- [환경 변수 가이드](#환경-변수-가이드)
+- [상시 운영 가이드PM2](#상시-운영-가이드pm2)
+- [백업복구 전략](#백업복구-전략)
+- [보안 체크리스트](#보안-체크리스트)
+- [트러블슈팅](#트러블슈팅)
+- [문서](#문서)
+
+---
+
+## 프로젝트 개요
+Layer Zero는 3D 프린터 운영에서 가장 시간이 많이 드는 구간을 줄이기 위해 만든 웹 콘솔입니다.
+
+일반적으로 출력 품질 문제는 아래 이유로 반복됩니다.
+- 상태 확인/제어/기록 화면이 분리되어 있어 작업 맥락이 끊김
+- 출력 중 이상 징후를 실시간으로 정리해서 보기 어려움
+- 운영 데이터가 기기마다 흩어져 재현이 어려움
+
+Layer Zero는 이 흐름을 하나의 운영 루프로 통합합니다.
+1. 홈에서 실시간 상태/경고/비용/환경 정보 확인
+2. 필요한 제어(매크로, 콘솔, 자동 레벨링) 즉시 실행
+3. 출력 완료 후 리포트/유지보수 데이터 자동 누적
+4. 다중 기기에서 같은 데이터(설정/이력) 공유
+
+---
+
+## 핵심 기능
+
+<table>
+  <thead>
+    <tr>
+      <th align="left">영역</th>
+      <th align="left">핵심 기능</th>
+      <th align="left">운영 효과</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>홈 대시보드</strong></td>
+      <td>진행률, 남은 시간(초 단위), 온도, 속도, 유량, 팬, 비용, 경고 카드</td>
+      <td>상태 판단 시간 단축, 즉시 대응</td>
+    </tr>
+    <tr>
+      <td><strong>프린터 제어</strong></td>
+      <td>Klipper 웹뷰 임베드, 콘솔 명령, 빠른 액션, 매크로</td>
+      <td>화면 전환 최소화, 제어 일관성</td>
+    </tr>
+    <tr>
+      <td><strong>자동 레벨링</strong></td>
+      <td>베드 히팅 → G28 → BED_MESH_CALIBRATE → SAVE_CONFIG</td>
+      <td>반복 작업 단순화, 절차 누락 방지</td>
+    </tr>
+    <tr>
+      <td><strong>웹캠 운영</strong></td>
+      <td>듀얼 ESP32-CAM, 회전/반전/보정, 스냅샷</td>
+      <td>저해상도 환경에서 모니터링 품질 개선</td>
+    </tr>
+    <tr>
+      <td><strong>AI 챗봇</strong></td>
+      <td>Free/Paid 모드, Flash/Pro 선택, 대화 유지/요약/재생성</td>
+      <td>현장 트러블슈팅 속도 향상</td>
+    </tr>
+    <tr>
+      <td><strong>유지보수</strong></td>
+      <td>소모품 추적, 체크리스트, 로그, 베드 메쉬 이력/그래프</td>
+      <td>예방 정비 체계화</td>
+    </tr>
+    <tr>
+      <td><strong>리포트</strong></td>
+      <td>출력 완료 리포트 자동 저장, 품질/비용 상세 분석</td>
+      <td>재현 가능한 개선 루프 형성</td>
+    </tr>
+    <tr>
+      <td><strong>중앙 동기화</strong></td>
+      <td>Node 저장소 + SSE 실시간 동기화 + 로컬 폴백</td>
+      <td>다중 기기 운영 일관성 확보</td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+## 화면 둘러보기
+
+### 1) 홈 / 프린터 / 웹캠
+| 홈 | 프린터 | 웹캠 |
+|---|---|---|
+| ![home-light](photo/docs/home-light.png) | ![printer-light](photo/docs/printer-light.png) | ![webcam-light](photo/docs/webcam-light.png) |
+| ![home-dark](photo/docs/home-dark.png) | ![printer-dark](photo/docs/printer-dark.png) | ![webcam-dark](photo/docs/webcam-dark.png) |
+
+### 2) AI 챗봇 / 유지보수 / 리포트
+| AI 챗봇 | 유지보수 | 리포트 |
+|---|---|---|
+| ![chatbot-light](photo/docs/chatbot-light.png) | ![maintenance-light](photo/docs/maintenance-light.png) | ![reports-light](photo/docs/reports-light.png) |
+| ![chatbot-dark](photo/docs/chatbot-dark.png) | ![maintenance-dark](photo/docs/maintenance-dark.png) | ![reports-dark](photo/docs/reports-dark.png) |
+
+### 3) 3D 도안 / 도구 / 설정
+| 3D 도안 | 도구 | 설정 |
+|---|---|---|
+| ![models-light](photo/docs/models-models-light.png) | ![tools-light](photo/docs/tools-light.png) | ![settings-light](photo/docs/settings-light.png) |
+| ![models-dark](photo/docs/models-models-dark.png) | ![tools-dark](photo/docs/tools-dark.png) | ![settings-dark](photo/docs/settings-dark.png) |
+
+---
+
+## 아키텍처
+
+```mermaid
+flowchart LR
+  A[Client UI React/Vite] -->|HTTP /api| B[Moonraker]
+  A -->|HTTP /lzapi| C[Central API Express]
+  A -->|SSE /lzapi/events| C
+  C --> D[(server/data/store.json)]
+  A --> E[(LocalStorage Fallback)]
+```
+
+### 데이터 흐름 요약
+- 프린터 실시간 데이터: UI → Moonraker(`/api` 프록시)
+- 설정/이력/리포트/챗 기록: UI ↔ Central API(`/lzapi`)
+- 실시간 동기화: SSE 이벤트 기반 변경 전파
+- 장애 대비: 중앙 API 불가 시 LocalStorage 임시 폴백
+
+---
+
+## 기술 스택
+
+### 프론트엔드
+- React 19
+- Vite 7
+- Tailwind CSS
+- Recharts / Plotly (차트)
+- Lucide 아이콘
+
+### 백엔드(경량 중앙 저장소)
+- Node.js + Express
+- JSON File Store (`server/data/store.json`)
+- SSE(Server-Sent Events)
+
+### 운영
+- PM2
+- Vite Proxy (`/api`, `/lzapi`)
+
+---
+
+## 빠른 시작
+
 ### 1) 요구 사항
 - Node.js 18 이상
 - npm
@@ -51,28 +185,9 @@ cd Layer-Zero
 npm install
 ```
 
-### 3) 환경 변수 설정
+### 3) 환경 파일 생성
 ```bash
 cp .env.example .env.local
-```
-
-`/.env.local` 예시:
-```env
-VITE_DEFAULT_PRINTER_NAME=KP3S PRO
-VITE_DEFAULT_KLIPPER_IP=172.30.1.83:7125
-VITE_DEFAULT_WEBCAM_URL=http://172.30.1.72/capture_flash
-VITE_DEFAULT_WEBCAM_URL2=http://172.30.1.93/capture_flash
-VITE_DEFAULT_WEATHER_CITY=서울시
-VITE_DEFAULT_WEATHER_LAT=37.5665
-VITE_DEFAULT_WEATHER_LON=126.9780
-VITE_MOONRAKER_FALLBACK_IP=172.30.1.83
-
-VITE_DEV_PROXY_TARGET=http://172.30.1.83:7125
-VITE_APP_API_BASE=/lzapi
-VITE_APP_API_TARGET=http://127.0.0.1:8787
-
-VITE_DEFAULT_AI_FREE_API_KEY=
-VITE_DEFAULT_AI_PAID_API_KEY=
 ```
 
 ### 4) 실행
@@ -80,33 +195,47 @@ VITE_DEFAULT_AI_PAID_API_KEY=
 npm run dev
 ```
 
-실행 후 접근:
-- 웹 UI: `http://localhost:5173`
-- 중앙 API: `http://localhost:8787/lzapi/health`
+접속 주소:
+- Web UI: `http://localhost:5173`
+- Central API Health: `http://localhost:8787/lzapi/health`
 
 ---
 
-## 서버 안 꺼지게 운영하기 (PM2)
-Layer Zero는 프론트엔드(Vite) + 중앙 API(Node/Express)를 함께 사용하므로, 장시간 운영 시 PM2 사용을 권장합니다.
+## 환경 변수 가이드
 
-### 방법 A) 프로젝트 기본 스크립트 사용
+> 실제 배포/공개 저장소에서는 API 키를 비워두고, 각 사용자 환경에서만 입력하세요.
+
+| 변수 | 예시 | 설명 |
+|---|---|---|
+| `VITE_DEFAULT_PRINTER_NAME` | `KP3S PRO` | UI 기본 프린터 이름 |
+| `VITE_DEFAULT_KLIPPER_IP` | `172.30.1.83:7125` | Moonraker 기본 주소 |
+| `VITE_DEFAULT_WEBCAM_URL` | `http://172.30.1.72/capture_flash` | 웹캠 1 URL |
+| `VITE_DEFAULT_WEBCAM_URL2` | `http://172.30.1.93/capture_flash` | 웹캠 2 URL |
+| `VITE_DEFAULT_WEATHER_CITY` | `서울시` | 기본 도시명 |
+| `VITE_DEFAULT_WEATHER_LAT` | `37.5665` | 기본 위도 |
+| `VITE_DEFAULT_WEATHER_LON` | `126.9780` | 기본 경도 |
+| `VITE_MOONRAKER_FALLBACK_IP` | `172.30.1.83` | Moonraker 폴백 IP |
+| `VITE_DEV_PROXY_TARGET` | `http://172.30.1.83:7125` | 개발 중 `/api` 프록시 대상 |
+| `VITE_APP_API_BASE` | `/lzapi` | 중앙 API base path |
+| `VITE_APP_API_TARGET` | `http://127.0.0.1:8787` | 개발 중 `/lzapi` 프록시 대상 |
+| `VITE_DEFAULT_AI_FREE_API_KEY` | `(빈값)` | 무료 모드 API 키 |
+| `VITE_DEFAULT_AI_PAID_API_KEY` | `(빈값)` | 유료 모드 API 키 |
+
+---
+
+## 상시 운영 가이드(PM2)
+
+### 방법 A: 프로젝트 스크립트
 ```bash
 chmod +x start-server.sh
 ./start-server.sh
 ```
 
-### 방법 B) PM2 직접 실행
+### 방법 B: PM2 수동 운영
 ```bash
-# 앱 시작
 pm2 start ecosystem.config.cjs
-
-# 상태 확인
 pm2 list
-
-# 로그
 pm2 logs web-print
-
-# 재시작 / 중지 / 삭제
 pm2 restart web-print
 pm2 stop web-print
 pm2 delete web-print
@@ -118,35 +247,63 @@ pm2 save
 pm2 startup
 ```
 
-> `pm2 startup`이 출력하는 마지막 명령을 한 번 더 실행해야 자동 시작 설정이 완료됩니다.
+> `pm2 startup` 실행 시 출력되는 명령을 반드시 한 번 더 실행해야 자동 시작이 완성됩니다.
 
 ---
 
-## 데이터 저장/동기화 구조
-- 저장 파일: `server/data/store.json`
-- 동기화 방식: SSE (`/lzapi/events`)
-- 주요 저장 대상:
-  - 설정값(`settings`)
-  - 베드 레벨링 이력(`meshHistory`)
-  - 리포트(`reports`)
-  - 유지보수 상태/로그/체크리스트(`maintenance.*`)
-  - AI 챗봇 메시지(`chat.messages`)
+## 백업/복구 전략
 
-브라우저 LocalStorage는 오프라인/폴백 용도로만 사용되며, 서버 연결 시 중앙 저장소를 우선 사용합니다.
+### 백업 대상
+- `server/data/store.json`
+- `.env.local` (운영 환경 전용)
 
----
+### 권장 주기
+- 최소 일 1회 자동 백업
+- 출력 작업이 많은 환경: 6시간 주기
 
-## Moonraker 연결 체크리스트
-설정 저장 후 OFFLINE이 뜨는 경우 아래를 우선 점검하세요.
-
-1. Moonraker 실제 포트 확인 (`7125` 기본)
-2. CORS / trusted_clients 설정 확인
-3. `VITE_DEV_PROXY_TARGET` 또는 설정 탭의 Klipper 주소 확인
-4. 브라우저 콘솔의 `/api/...` 응답 코드 확인
+### 복구 절차
+1. 서버 중지
+2. 백업본 `store.json` 복원
+3. 서버 재시작
+4. 클라이언트 새로고침 후 데이터 확인
 
 ---
 
-## 빌드/품질 확인
+## 보안 체크리스트
+- `.env.local` 절대 커밋 금지
+- 공개 저장소 업로드 전 API 키 제거
+- 내부망 외부 공개 시 HTTPS + 인증 + 방화벽 적용
+- `server/data/store.json` 접근권한 최소화
+- 공유 장비에서는 설정 초기화/키 교체 절차 운영
+
+---
+
+## 트러블슈팅
+
+### 1) 홈에서 OFFLINE 표시
+- Moonraker 포트가 실제로 `7125`인지 확인
+- 설정 탭의 Klipper 주소와 장비 주소 일치 여부 확인
+- Moonraker의 `cors_domains`, `trusted_clients` 확인
+- 브라우저 Network에서 `/api/server/info` 응답 코드 확인
+
+### 2) 파일 목록은 보이는데 업로드 실패
+- Moonraker `max_upload_size` 확인
+- file_manager 권한/경로 확인
+- 스토리지 가용량 확인
+
+### 3) iOS Safari 복귀 후 데이터 멈춤
+- 네트워크 전환 후 재연결 지연 가능
+- 수 초 대기 후 미복구 시 새로고침
+- 동일 증상 반복 시 SSE 연결 상태 확인
+
+### 4) 브라우저 알림 미동작
+- HTTPS 또는 localhost 정책 여부 확인
+- 브라우저 알림 권한 허용 여부 확인
+- iOS PWA 제한사항(브라우저별 정책) 확인
+
+---
+
+## 품질 체크 명령
 ```bash
 npm run lint
 npm run build
@@ -154,18 +311,6 @@ npm run build
 
 ---
 
-## 보안 주의사항
-- `.env.local`은 절대 커밋하지 마세요.
-- API 키는 설정 탭에서 바꾸더라도 중앙 저장소에 남을 수 있으므로, 공개 저장소 배포 전 초기화/교체를 권장합니다.
-- 내부망 외부 공개 시 HTTPS/인증/방화벽 정책을 반드시 적용하세요.
-
----
-
 ## 문서
-- 상세 가이드: [LAYER_ZERO_PROJECT_GUIDE.md](LAYER_ZERO_PROJECT_GUIDE.md)
+- 상세 기능/운영 가이드: [LAYER_ZERO_PROJECT_GUIDE.md](LAYER_ZERO_PROJECT_GUIDE.md)
 
----
-
-## 라이선스
-현재 별도 라이선스 파일이 없으면 All rights reserved 상태입니다.
-오픈소스로 공개할 계획이라면 `LICENSE` 파일을 추가하세요.
