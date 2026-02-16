@@ -1,19 +1,26 @@
-# Layer Zero 중앙 저장 아키텍처 (현재 구현)
+# Layer Zero 중앙 저장 아키텍처 (현행)
+
+이 문서는 현재 코드 기준 중앙 저장/실시간 동기화 구조를 설명합니다.
 
 ## 1. 개요
 
-Layer Zero는 브라우저 단일 저장(localStorage)에서 확장해,
-중앙 저장 API(`server/index.js`) + 로컬 fallback 구조를 사용합니다.
+Layer Zero는 로컬 단독 저장에서 확장해 다음 구조로 동작합니다.
 
-- 중앙 저장: `server/data/store.json`
-- API Base: `/lzapi`
-- 실시간 변경 전파: SSE (`/lzapi/events`)
+- 프론트: React + Vite
+- 중앙 API: `server/index.js` (Express)
+- 저장소: `server/data/store.json`
+- 실시간 이벤트: SSE (`GET /lzapi/events`)
+- 로컬 fallback: localStorage 병행 유지
 
-## 2. 저장 모델
+## 2. 저장 스키마
 
 ```json
 {
-  "meta": { "revision": 1, "updatedAt": "...", "resources": {} },
+  "meta": {
+    "revision": 1,
+    "updatedAt": "2026-02-16T00:00:00.000Z",
+    "resources": {}
+  },
   "settings": {},
   "meshHistory": [],
   "reports": [],
@@ -28,7 +35,7 @@ Layer Zero는 브라우저 단일 저장(localStorage)에서 확장해,
 }
 ```
 
-## 3. API 엔드포인트
+## 3. 엔드포인트
 
 - `GET /lzapi/health`
 - `GET/PUT /lzapi/settings`
@@ -41,45 +48,53 @@ Layer Zero는 브라우저 단일 저장(localStorage)에서 확장해,
 - `GET/PUT/DELETE /lzapi/chat/messages`
 - `GET /lzapi/events`
 
-## 4. 이벤트 모델 (SSE)
-
-서버는 변경 시 이벤트를 발행합니다.
-
-- `settings.updated` (`data`)
-- `mesh.updated` (`action`, `item`)
-- `reports.updated` (`action`, `item|id`)
-- `maintenance.state.updated` (`data`)
-- `maintenance.logs.updated` (`action`, `item`)
-- `maintenance.checklist.updated` (`items`)
-- `chat.messages.updated` (`items`)
+## 4. 실시간 이벤트 (SSE)
 
 공통 필드:
 
+- `type`
 - `revision`
 - `at`
 
-## 5. 정합성 정책
+리소스별 payload:
+
+- `settings.updated` → `data`
+- `reports.updated` → `action`(`upsert/delete/clear`), `item|id`
+- `maintenance.state.updated` → `data`
+- `maintenance.logs.updated` → `action`(`add/clear`), `item`
+- `maintenance.checklist.updated` → `items`
+- `mesh.updated` → `action`(`upsert/clear`), `item`
+- `chat.messages.updated` → `items`
+
+## 5. 데이터 일관성
 
 - settings 저장은 deep merge
-- 변경마다 `meta.revision` 증가
-- append 계열 데이터는 최신순으로 제한 저장
-- 클라이언트는 patch 반영 우선, 필요 시 fallback fetch
+- 변경 시 `meta.revision` 증가
+- append 리소스는 최신순/개수 제한 저장
+- 프론트는 payload patch 반영 우선
+- payload 불충분 시 해당 리소스만 fallback fetch
 
-## 6. fallback 정책
+## 6. fallback/복구 전략
 
-- 서버 요청 실패: localStorage fallback 유지
-- 네트워크 복구 시 서버 데이터 우선 반영
+- 서버 실패 시 localStorage에 즉시 기록
+- 네트워크 복구 시 서버 우선 동기화
+- 베드메쉬는 실패 시 `pending-mesh-history-v1` 큐에 저장 후 자동 재전송
 
-## 7. 보안 정책
+## 7. 보안
 
-- 민감값은 `.env.local` 관리
-- `.env*`는 Git 추적 제외
+- `.env`, `.env.local`, `.env.*` Git 추적 제외
 - `server/data/store.json` Git 추적 제외
-- 키 유출 가능성이 있으면 즉시 폐기/재발급
+- API 키 유출 이력 발생 시 키 폐기/재발급
 
-## 8. 향후 확장 권장
+## 8. 운영 권장
 
-- 파일 JSON 저장소 -> PostgreSQL 전환
-- 사용자/기기 단위 인증 도입
-- revision 기반 optimistic lock 강화
-- 이벤트 내 origin/device 식별로 자기 이벤트 무시 최적화
+- 개발 시 `npm run dev`로 웹(5173)+API(8787) 동시 실행
+- 백엔드 헬스체크/자동재기동(pm2/systemd) 권장
+- 장기적으로 PostgreSQL/인증/충돌제어 도입 권장
+
+## 9. 화면 참조
+
+- 홈: `photo/docs/home-desktop.png`
+- 유지보수: `photo/docs/maintenance-desktop.png`
+- 리포트: `photo/docs/reports-desktop.png`
+- 설정: `photo/docs/settings-desktop.png`

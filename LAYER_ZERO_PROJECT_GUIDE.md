@@ -1,28 +1,41 @@
 # Layer Zero 프로젝트 가이드
 
-![Layer Zero 홈 화면 (다크)](photo/home.png)
-![Layer Zero 홈 화면 (라이트)](<photo/home(light).png>)
+![홈 (Desktop)](photo/docs/home-desktop.png)
 
-Layer Zero는 Klipper 기반 3D 프린터 운영을 위한 실전형 웹 콘솔입니다.
+Layer Zero는 3D 프린터 운영에서 필요한 기능을 한 화면 체계로 묶은 통합 웹 콘솔입니다.
 
-## 1. 프로젝트 목적
+## 1. 프로젝트 목표
 
-- 출력 중 상태 판단 시간을 줄인다.
-- 문제 발생 시 즉시 조치할 수 있게 한다.
-- 출력 결과를 리포트로 저장해 다음 출력 품질을 올린다.
+- 상태 파악 시간을 줄이고 빠르게 판단
+- 에러/경고 발생 시 즉시 조치
+- 출력 결과를 누적해 품질 개선 루프 형성
 
-## 2. 핵심 기능
+## 2. IA(정보 구조)
 
-### 2.1 홈
+- 홈
+- 프린터
+- 웹캠
+- AI 챗봇
+- 3D 도안
+- 유지보수
+- 도구
+- 리포트
+- 설정
 
-- 진행률(원형 프로그레스) + ETA + 출력 세부 지표
-- 온도/팬/유량/높이/비용 실시간 표시
-- 경고/에러 카드 + 원클릭 조치
-- BLTouch 자동레벨링 실행 및 결과 팝업
+## 3. 탭별 상세
 
-### 2.2 자동레벨링
+### 3.1 홈
+![홈 (Desktop)](photo/docs/home-desktop.png)
 
-실행 순서:
+핵심 항목:
+
+- 상태/진행률/남은시간/완료예정
+- 온도/속도/유량/팬/높이
+- 실시간 비용 견적
+- 경고/에러 카드
+- BLTouch 자동레벨링 버튼
+
+BLTouch 자동레벨링 절차:
 
 1. 베드 50도 가열
 2. `G28`
@@ -30,46 +43,85 @@ Layer Zero는 Klipper 기반 3D 프린터 운영을 위한 실전형 웹 콘솔�
 4. 메쉬 결과 수집
 5. `SAVE_CONFIG`
 
-결과:
+저장 안정성:
 
-- 레벨링 값 테이블
-- 3D 평탄도 그래프
-- 유지보수 탭 이력 저장
+- 서버 저장 실패 시 `pending-mesh-history-v1` 큐에 적재
+- 다음 저장/재접속 시 자동 재전송
 
-### 2.3 웹캠
+### 3.2 프린터
+![프린터 (Desktop)](photo/docs/printer-desktop.png)
 
-- CAM1/CAM2 선택
-- 회전(0/90/180/270), 좌우반전
-- 보정(업스케일/노이즈/대비/밝기/채도)
-- 모바일/PC 반응형 뷰
+- 파일 업로드/삭제/출력 시작
+- 출력 관련 메타데이터 및 상태 확인
 
-### 2.4 AI 챗봇
+### 3.3 웹캠
+![웹캠 (Desktop)](photo/docs/webcam-desktop.png)
+![웹캠 (Mobile)](photo/docs/webcam-mobile.png)
+
+- CAM1/CAM2 전환
+- 회전/반전
+- 업스케일/노이즈/대비/밝기/채도 보정
+- 스냅샷/전체화면
+
+### 3.4 AI 챗봇
+![AI 챗봇 (Desktop)](photo/docs/chatbot-desktop.png)
+![AI 챗봇 (Mobile)](photo/docs/chatbot-mobile.png)
 
 - Free/Paid 모드
-- Paid 모델 선택: Flash/Pro
-- 최근 답변 복사/요약/재생성
-- 대화 기록 중앙 저장
+- Paid 모델(Flash/Pro)
+- 복사/요약/재생성
+- 대화 이력 중앙 저장 + SSE 동기화
 
-### 2.5 유지보수/리포트
+### 3.5 3D 도안
+![도안 사이트](photo/docs/models-models-desktop.png)
+![웹 슬라이서](photo/docs/models-slicers-desktop.png)
+![생성기](photo/docs/models-generators-desktop.png)
+![칼리브레이션](photo/docs/models-calibration-desktop.png)
+![검색 & 리소스](photo/docs/models-resources-desktop.png)
 
-- 점검 체크리스트, 로그, 주기 관리
-- 출력 완료 리포트 자동 생성/저장
-- 품질 하락 구간, 경고 타임라인, 비용 추이
+- 카테고리별 사이트 큐레이션
+- 검색/태그/즐겨찾기
 
-## 3. 데이터 저장 구조 (현재)
+### 3.6 유지보수
+![유지보수 (Desktop)](photo/docs/maintenance-desktop.png)
+![유지보수 (Mobile)](photo/docs/maintenance-mobile.png)
 
-### 3.1 중앙 저장
+- 점검 카드(노즐/윤활/필라멘트)
+- 로그/체크리스트
+- 베드메쉬 이력 + 3D 평탄도 그래프
 
-- 파일: `server/data/store.json`
-- 엔드포인트: `/lzapi/*`
-- 실시간 이벤트: `/lzapi/events` (SSE)
+### 3.7 도구
+![도구 (Desktop)](photo/docs/tools-desktop.png)
 
-### 3.2 로컬 fallback
+- E-step/Flow/PID/리트랙션
+- 모션 프로파일 계산
+- 실패 증상 트리아지
 
-- 서버 저장 실패 시 localStorage 사용
-- 네트워크 복구 후 서버 동기화
+### 3.8 리포트
+![리포트 (Desktop)](photo/docs/reports-desktop.png)
 
-## 4. 실시간 동기화
+- 출력 완료 자동 리포트
+- 품질 하락 원인, 경고 타임라인, 비용 추이
+- 필터/상세/삭제
+
+### 3.9 설정
+![설정 (Desktop)](photo/docs/settings-desktop.png)
+![설정 (Mobile)](photo/docs/settings-mobile.png)
+
+- 연결(프린터/웹캠/날씨)
+- 성능/알림/UI
+- AI 키/프로필/백업
+- 알림 권한 실패 원인 표시(지원불가/비보안/차단)
+
+## 4. 동기화/데이터 구조
+
+### 4.1 중앙 저장
+
+- API: `/lzapi/*`
+- 저장소: `server/data/store.json`
+- 실시간: `/lzapi/events` (SSE)
+
+### 4.2 이벤트
 
 - `settings.updated`
 - `reports.updated`
@@ -79,9 +131,14 @@ Layer Zero는 Klipper 기반 3D 프린터 운영을 위한 실전형 웹 콘솔�
 - `mesh.updated`
 - `chat.messages.updated`
 
-각 이벤트는 변경분(action/item/data) payload를 포함하며, 프론트는 전체 재조회 대신 patch 반영을 우선 사용합니다.
+각 이벤트는 변경분 payload(`action/item/data`)를 담아 patch 반영합니다.
 
-## 5. 설치/실행
+### 4.3 fallback
+
+- 서버 실패 시 localStorage fallback
+- 복구 후 서버 데이터 우선 동기화
+
+## 5. 실행
 
 ```bash
 npm install
@@ -89,22 +146,30 @@ cp .env.example .env.local
 npm run dev
 ```
 
-배포 확인:
+- 웹: `http://127.0.0.1:5173`
+- API: `http://127.0.0.1:8787`
 
-```bash
-npm run build
-npm run preview
-```
+`npm run dev`는 웹+API를 동시에 실행합니다.
 
-## 6. 운영 팁
+## 6. 운영 이슈 대응
 
-- 다중 기기 환경: SSE로 동기화되므로 동일 계열 UI 상태가 빠르게 맞춰짐
-- iOS Safari: 백그라운드 복귀 시 WS 폴백 동작 가능 (구조상 자동 복구)
-- 웹캠 메모리 부담 시: 보정값/새로고침 빈도 조절 권장
+### 6.1 흰 화면
+
+- 5173만 뜨고 8787이 죽으면 일부 페이지가 비정상 동작 가능
+- `npm run dev`로 두 프로세스 동시에 재기동
+
+### 6.2 알림 권한
+
+- HTTPS/localhost 환경에서만 권한 요청이 정상 동작
+- 로컬 IP `http://172.x.x.x`는 브라우저 정책으로 차단 가능
+
+### 6.3 베드메쉬 이력 누락
+
+- 서버 저장 실패 시 큐 적재 + 자동 재전송으로 유실 최소화
 
 ## 7. 보안 체크리스트
 
-- `.env.local`만 사용하고 커밋 금지
+- `.env.local`만 사용
+- `.env*`는 커밋 금지
 - `server/data/store.json` 커밋 금지
-- API 키는 설정 입력 후 서버에도 저장될 수 있으므로 저장소 유출 시 즉시 키 폐기/재발급
-
+- 키 유출 시 즉시 폐기/재발급

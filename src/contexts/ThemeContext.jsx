@@ -1,10 +1,11 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { getServerSettings, putServerSettings } from '../utils/centralApi';
+import { getServerSettings, putServerSettings, subscribeServerEvents } from '../utils/centralApi';
 
 const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
     const LOCAL_THEME_KEY = 'layer-zero-theme';
+    const [isRemoteHydrated, setIsRemoteHydrated] = useState(false);
     const [theme, setTheme] = useState(() => {
         try {
             const savedTheme = localStorage.getItem(LOCAL_THEME_KEY);
@@ -42,16 +43,30 @@ export function ThemeProvider({ children }) {
                 }
             } catch {
                 // offline/local fallback mode
+            } finally {
+                if (!cancelled) setIsRemoteHydrated(true);
             }
         })();
         return () => { cancelled = true; };
     }, []);
 
     useEffect(() => {
+        if (!isRemoteHydrated) return;
         putServerSettings({ uiTheme: theme }).catch(() => {
             // offline/local fallback mode
         });
-    }, [theme]);
+    }, [theme, isRemoteHydrated]);
+
+    useEffect(() => {
+        const unsubscribe = subscribeServerEvents((event) => {
+            if (!event || event.type !== 'settings.updated') return;
+            const nextTheme = event?.data?.uiTheme;
+            if (nextTheme !== 'dark' && nextTheme !== 'light') return;
+            setTheme((prev) => (prev === nextTheme ? prev : nextTheme));
+            localStorage.setItem(LOCAL_THEME_KEY, nextTheme);
+        });
+        return () => unsubscribe();
+    }, []);
 
     const toggleTheme = () => {
         setTheme(prev => prev === 'dark' ? 'light' : 'dark');

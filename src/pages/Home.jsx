@@ -47,6 +47,7 @@ function getMeshCellVisual(value, absMax, isDark) {
 const HomePage = () => {
     const CONSOLE_HISTORY_KEY = 'home-console-history-v1';
     const BED_MESH_HISTORY_KEY = 'bed-mesh-history-v1';
+    const PENDING_MESH_SYNC_KEY = 'pending-mesh-history-v1';
     const { theme } = useTheme();
     const { settings, updateSettings } = useSettings();
     const [time, setTime] = useState(new Date());
@@ -568,9 +569,56 @@ const HomePage = () => {
         });
     }, [CONSOLE_HISTORY_KEY, updateSettings]);
 
+    const readPendingMeshSync = useCallback(() => {
+        try {
+            const raw = localStorage.getItem(PENDING_MESH_SYNC_KEY);
+            const parsed = raw ? JSON.parse(raw) : [];
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    }, [PENDING_MESH_SYNC_KEY]);
+
+    const writePendingMeshSync = useCallback((items) => {
+        try {
+            const safe = Array.isArray(items) ? items : [];
+            localStorage.setItem(PENDING_MESH_SYNC_KEY, JSON.stringify(safe.slice(0, 40)));
+        } catch {
+            // ignore
+        }
+    }, [PENDING_MESH_SYNC_KEY]);
+
+    const flushPendingMeshSync = useCallback(async () => {
+        const pending = readPendingMeshSync();
+        if (!pending.length) return 0;
+        const remain = [];
+        let synced = 0;
+        for (const item of pending) {
+            try {
+                await createMeshHistory(item);
+                synced += 1;
+            } catch {
+                remain.push(item);
+            }
+        }
+        writePendingMeshSync(remain);
+        return synced;
+    }, [readPendingMeshSync, writePendingMeshSync]);
+
+    useEffect(() => {
+        flushPendingMeshSync().then((synced) => {
+            if (synced > 0) {
+                setConsoleStatus({ type: 'success', text: `지연된 레벨링 이력 ${synced}건 서버 동기화 완료` });
+            }
+        }).catch(() => {
+            // ignore
+        });
+    }, [flushPendingMeshSync]);
+
     const saveBedMeshHistory = useCallback(async (matrix) => {
         if (!Array.isArray(matrix) || matrix.length === 0) return;
         try {
+            await flushPendingMeshSync();
             const rows = matrix.length;
             const cols = matrix[0]?.length || 0;
             const flatten = matrix.flat().filter((v) => Number.isFinite(Number(v))).map(Number);
@@ -605,11 +653,21 @@ const HomePage = () => {
             const next = [record, ...history].slice(0, 20);
             localStorage.setItem(BED_MESH_HISTORY_KEY, JSON.stringify(next));
             window.dispatchEvent(new Event('storage'));
-            await createMeshHistory(record);
-        } catch {
-            // ignore storage failures
+            try {
+                await createMeshHistory(record);
+            } catch (syncError) {
+                const pending = readPendingMeshSync();
+                writePendingMeshSync([record, ...pending]);
+                setConsoleStatus({
+                    type: 'error',
+                    text: '레벨링 이력 서버 저장 실패. 로컬에 임시 저장했고 자동 재시도합니다.'
+                });
+                console.error('[BedMesh] server sync failed, queued for retry:', syncError);
+            }
+        } catch (error) {
+            console.error('[BedMesh] save failed:', error);
         }
-    }, [BED_MESH_HISTORY_KEY, printProgress.filename]);
+    }, [BED_MESH_HISTORY_KEY, printProgress.filename, flushPendingMeshSync, readPendingMeshSync, writePendingMeshSync]);
 
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
