@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import remarkGfm from 'remark-gfm';
 import { Send, Bot, User, AlertCircle, Loader2, RefreshCcw, Coins, Copy, Check, Zap, DollarSign, Paperclip, X, Image as ImageIcon, ArrowUpToLine } from 'lucide-react';
@@ -57,7 +57,7 @@ function fallbackCopyText(text) {
     let copied = false;
     try {
         copied = document.execCommand('copy');
-    } catch (e) {
+    } catch {
         copied = false;
     }
     document.body.removeChild(textarea);
@@ -349,7 +349,7 @@ const AiChatbot = () => {
             }
             setIsLatestCopied(true);
             setTimeout(() => setIsLatestCopied(false), 1500);
-        } catch (e) {
+        } catch {
             setError('클립보드 복사에 실패했습니다.');
         }
     };
@@ -464,7 +464,6 @@ const AiChatbot = () => {
                 }
 
                 if (recentRequests.length >= FREE_TIER_RPM) {
-                    const waitTime = 60 - Math.floor((now - recentRequests[0]) / 1000);
                     throw new Error(`너무 빠르게 요청하셨습니다. (분당 ${FREE_TIER_RPM}회 제한, 현재 ${recentRequests.length}회 요청). 잠시 후 다시 시도해주세요.`);
                 }
             }
@@ -787,21 +786,21 @@ const AiChatbot = () => {
                                 <ReactMarkdown
                                     remarkPlugins={[remarkGfm]}
                                     components={{
-                                        code: ({ node, inline, className, children, ...props }) => (
+                                        code: ({ inline, className, children, ...props }) => (
                                             <CodeBlock inline={inline} className={className} {...props}>{children}</CodeBlock>
                                         ),
                                         // Custom styling for other markdown elements in light/dark mode
-                                        p: ({ node, ...props }) => <p className={cn("mb-2 last:mb-0 leading-relaxed", theme === 'light' ? "text-slate-800" : "text-slate-200")} {...props} />,
-                                        strong: ({ node, ...props }) => <strong className={cn("font-bold", theme === 'light' ? "text-slate-900" : "text-white")} {...props} />,
-                                        h1: ({ node, ...props }) => <h1 className={cn("text-2xl font-bold mb-4 border-b pb-2", theme === 'light' ? "text-slate-900 border-slate-200" : "text-white border-slate-700")} {...props} />,
-                                        h2: ({ node, ...props }) => <h2 className={cn("text-xl font-bold mb-3 mt-6", theme === 'light' ? "text-slate-900" : "text-white")} {...props} />,
-                                        h3: ({ node, ...props }) => <h3 className={cn("text-lg font-bold mb-2 mt-4", theme === 'light' ? "text-slate-900" : "text-white")} {...props} />,
-                                        ul: ({ node, ...props }) => <ul className={cn("list-disc list-outside ml-6 mb-4 space-y-1", theme === 'light' ? "text-slate-800" : "text-slate-200")} {...props} />,
-                                        ol: ({ node, ...props }) => <ol className={cn("list-decimal list-outside ml-6 mb-4 space-y-1", theme === 'light' ? "text-slate-800" : "text-slate-200")} {...props} />,
-                                        li: ({ node, ...props }) => <li className="pl-1" {...props} />,
-                                        blockquote: ({ node, ...props }) => <blockquote className={cn("border-l-4 pl-4 py-1 my-4 italic", theme === 'light' ? "border-slate-300 text-slate-600 bg-slate-50" : "border-slate-600 text-slate-400 bg-slate-800/30")} {...props} />,
-                                        a: ({ node, ...props }) => <a className="text-blue-500 hover:text-blue-400 hover:underline transition-colors" target="_blank" rel="noopener noreferrer" {...props} />,
-                                        table: ({ node, ...props }) => (
+                                        p: (props) => <p className={cn("mb-2 last:mb-0 leading-relaxed", theme === 'light' ? "text-slate-800" : "text-slate-200")} {...props} />,
+                                        strong: (props) => <strong className={cn("font-bold", theme === 'light' ? "text-slate-900" : "text-white")} {...props} />,
+                                        h1: (props) => <h1 className={cn("text-2xl font-bold mb-4 border-b pb-2", theme === 'light' ? "text-slate-900 border-slate-200" : "text-white border-slate-700")} {...props} />,
+                                        h2: (props) => <h2 className={cn("text-xl font-bold mb-3 mt-6", theme === 'light' ? "text-slate-900" : "text-white")} {...props} />,
+                                        h3: (props) => <h3 className={cn("text-lg font-bold mb-2 mt-4", theme === 'light' ? "text-slate-900" : "text-white")} {...props} />,
+                                        ul: (props) => <ul className={cn("list-disc list-outside ml-6 mb-4 space-y-1", theme === 'light' ? "text-slate-800" : "text-slate-200")} {...props} />,
+                                        ol: (props) => <ol className={cn("list-decimal list-outside ml-6 mb-4 space-y-1", theme === 'light' ? "text-slate-800" : "text-slate-200")} {...props} />,
+                                        li: (props) => <li className="pl-1" {...props} />,
+                                        blockquote: (props) => <blockquote className={cn("border-l-4 pl-4 py-1 my-4 italic", theme === 'light' ? "border-slate-300 text-slate-600 bg-slate-50" : "border-slate-600 text-slate-400 bg-slate-800/30")} {...props} />,
+                                        a: (props) => <a className="text-blue-500 hover:text-blue-400 hover:underline transition-colors" target="_blank" rel="noopener noreferrer" {...props} />,
+                                        table: (props) => (
                                             <div className="w-full overflow-x-auto my-4 rounded-lg border border-slate-700/50">
                                                 <table
                                                     className={cn("w-full table-fixed text-sm text-left border-collapse", theme === 'light' ? "text-slate-700" : "text-slate-300")}
@@ -810,12 +809,12 @@ const AiChatbot = () => {
                                                 />
                                             </div>
                                         ),
-                                        thead: ({ node, ...props }) => <thead className={cn("text-xs uppercase", theme === 'light' ? "bg-slate-100 text-slate-700" : "bg-slate-800 text-slate-400")} {...props} />,
-                                        th: ({ node, ...props }) => <th className="px-3 md:px-4 py-2.5 font-bold align-top whitespace-normal break-words [word-break:break-word]" {...props} />,
-                                        tbody: ({ node, ...props }) => <tbody className={cn("divide-y", theme === 'light' ? "divide-slate-200" : "divide-slate-700")} {...props} />,
-                                        tr: ({ node, ...props }) => <tr className={cn(theme === 'light' ? "hover:bg-slate-50" : "hover:bg-slate-800/50")} {...props} />,
-                                        td: ({ node, ...props }) => <td className="px-3 md:px-4 py-2.5 align-top whitespace-normal break-words [word-break:break-word] leading-relaxed" {...props} />,
-                                        hr: ({ node, ...props }) => <hr className={cn("my-6 border-0 h-px", theme === 'light' ? "bg-slate-200" : "bg-slate-700")} {...props} />,
+                                        thead: (props) => <thead className={cn("text-xs uppercase", theme === 'light' ? "bg-slate-100 text-slate-700" : "bg-slate-800 text-slate-400")} {...props} />,
+                                        th: (props) => <th className="px-3 md:px-4 py-2.5 font-bold align-top whitespace-normal break-words [word-break:break-word]" {...props} />,
+                                        tbody: (props) => <tbody className={cn("divide-y", theme === 'light' ? "divide-slate-200" : "divide-slate-700")} {...props} />,
+                                        tr: (props) => <tr className={cn(theme === 'light' ? "hover:bg-slate-50" : "hover:bg-slate-800/50")} {...props} />,
+                                        td: (props) => <td className="px-3 md:px-4 py-2.5 align-top whitespace-normal break-words [word-break:break-word] leading-relaxed" {...props} />,
+                                        hr: (props) => <hr className={cn("my-6 border-0 h-px", theme === 'light' ? "bg-slate-200" : "bg-slate-700")} {...props} />,
                                     }}
                                 >
                                     {msg.text}

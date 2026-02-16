@@ -49,18 +49,21 @@ async function copyText(text) {
 
 const cardBase = 'premium-card';
 
-const ToolCard = ({ theme, icon: Icon, title, subtitle, accent = 'text-blue-400', children }) => (
-    <section className={cn(cardBase, theme === 'light' ? 'bg-white' : '')}>
-        <div className="flex items-center gap-3 mb-4">
-            <Icon className={cn('w-5 h-5 md:w-6 md:h-6', accent)} />
-            <div>
-                <h2 className="text-lg md:text-xl font-black">{title}</h2>
-                {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+const ToolCard = ({ theme, icon, title, subtitle, accent = 'text-blue-400', children }) => {
+    const Icon = icon;
+    return (
+        <section className={cn(cardBase, theme === 'light' ? 'bg-white' : '')}>
+            <div className="flex items-center gap-3 mb-4">
+                <Icon className={cn('w-5 h-5 md:w-6 md:h-6', accent)} />
+                <div>
+                    <h2 className="text-lg md:text-xl font-black">{title}</h2>
+                    {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+                </div>
             </div>
-        </div>
-        {children}
-    </section>
-);
+            {children}
+        </section>
+    );
+};
 
 const CopyButton = ({ text, label = '복사', className = '' }) => {
     const [copied, setCopied] = useState(false);

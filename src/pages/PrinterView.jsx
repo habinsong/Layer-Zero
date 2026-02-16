@@ -38,7 +38,8 @@ const PrinterView = () => {
         setIsLoading(true);
         const frame = document.getElementById('printer-frame');
         if (frame) {
-            frame.src = frame.src;
+            const separator = displayUrl.includes('?') ? '&' : '?';
+            frame.src = `${displayUrl}${separator}_ts=${Date.now()}`;
         }
         setTimeout(() => setIsLoading(false), 1500);
     };

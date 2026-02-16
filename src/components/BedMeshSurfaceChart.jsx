@@ -17,6 +17,14 @@ const toFiniteNumber = (value, fallback = 0) => {
     return Number.isFinite(num) ? num : fallback;
 };
 
+const SURFACE_COLORSCALE = [
+    [0, '#1e3a8a'],
+    [0.24, '#3b82f6'],
+    [0.5, '#f8fafc'],
+    [0.76, '#fb923c'],
+    [1, '#dc2626']
+];
+
 const BedMeshSurfaceChartComponent = ({ matrix, isDark = false, className = '', title = '평탄도 3D 뷰', chartHeight = 360 }) => {
     const [cameraState, setCameraState] = useState({
         eye: { x: 1.55, y: -1.58, z: 0.95 },
@@ -63,27 +71,17 @@ const BedMeshSurfaceChartComponent = ({ matrix, isDark = false, className = '', 
         return { normalized, rows, cols, min, max, cLimit, x, y, flatPlane, path };
     }, [matrix]);
 
-    if (!prepared) {
-        return (
-            <div className={cn(
-                'rounded-xl border px-3 py-4 text-sm',
-                isDark ? 'border-slate-700 bg-slate-900/50 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600',
-                className
-            )}>
-                3D 그래프를 표시하려면 2x2 이상 매트릭스가 필요합니다.
-            </div>
-        );
-    }
-
-    const { normalized, rows, cols, min, max, cLimit, x, y, flatPlane, path } = prepared;
+    const normalized = prepared?.normalized ?? [[0, 0], [0, 0]];
+    const rows = prepared?.rows ?? 2;
+    const cols = prepared?.cols ?? 2;
+    const min = prepared?.min ?? 0;
+    const max = prepared?.max ?? 0;
+    const cLimit = prepared?.cLimit ?? 0.02;
+    const x = prepared?.x ?? [1, 2];
+    const y = prepared?.y ?? [1, 2];
+    const flatPlane = prepared?.flatPlane ?? [[0, 0], [0, 0]];
+    const path = prepared?.path ?? [{ x: 1, y: 1, z: 0, order: 1 }, { x: 2, y: 2, z: 0, order: 2 }];
     const height = Math.max(240, Number(chartHeight) || 360);
-    const surfaceColorscale = [
-        [0, '#1e3a8a'],
-        [0.24, '#3b82f6'],
-        [0.5, '#f8fafc'],
-        [0.76, '#fb923c'],
-        [1, '#dc2626']
-    ];
 
     const pathLift = Math.max(cLimit * 0.04, 0.003);
     const pathX = path.map((p) => p.x);
@@ -93,7 +91,9 @@ const BedMeshSurfaceChartComponent = ({ matrix, isDark = false, className = '', 
     const startPoint = path[0];
     const endPoint = path[path.length - 1];
 
-    const data = useMemo(() => ([
+    const chartData = useMemo(() => {
+        if (!prepared) return [];
+        return [
         {
             type: 'surface',
             name: 'Flat',
@@ -118,7 +118,7 @@ const BedMeshSurfaceChartComponent = ({ matrix, isDark = false, className = '', 
             z: normalized,
             cmin: -cLimit,
             cmax: cLimit,
-            colorscale: surfaceColorscale,
+            colorscale: SURFACE_COLORSCALE,
             opacity: 1,
             hovertemplate: 'X %{x}<br>Y %{y}<br>Z %{z:.4f} mm<extra></extra>',
             colorbar: {
@@ -183,7 +183,8 @@ const BedMeshSurfaceChartComponent = ({ matrix, isDark = false, className = '', 
             hovertemplate: 'END (X %{x}, Y %{y})<extra></extra>',
             showlegend: false
         }
-    ]), [cLimit, cols, endPoint.x, endPoint.y, flatPlane, isDark, normalized, pathLift, pathText, pathX, pathY, pathZ, rows, startPoint.x, startPoint.y]);
+        ];
+    }, [prepared, cLimit, endPoint.x, endPoint.y, flatPlane, isDark, normalized, pathLift, pathText, pathX, pathY, pathZ, startPoint.x, startPoint.y, x, y]);
 
     const layout = useMemo(() => ({
         margin: { l: 8, r: 8, t: 8, b: 8 },
@@ -255,6 +256,18 @@ const BedMeshSurfaceChartComponent = ({ matrix, isDark = false, className = '', 
         });
     }, []);
 
+    if (!prepared) {
+        return (
+            <div className={cn(
+                'rounded-xl border px-3 py-4 text-sm',
+                isDark ? 'border-slate-700 bg-slate-900/50 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600',
+                className
+            )}>
+                3D 그래프를 표시하려면 2x2 이상 매트릭스가 필요합니다.
+            </div>
+        );
+    }
+
     return (
         <div className={cn(
             'rounded-xl border p-3',
@@ -281,7 +294,7 @@ const BedMeshSurfaceChartComponent = ({ matrix, isDark = false, className = '', 
                     }
                 >
                     <Plot3D
-                        data={data}
+                        data={chartData}
                         layout={layout}
                         onRelayout={handleRelayout}
                         config={{

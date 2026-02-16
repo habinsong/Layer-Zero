@@ -23,11 +23,22 @@ const Layout = () => {
             const isWakelockEnabled = settings.wakelockEnabled === true;
             if (!isWakelockEnabled) {
                 if (wakeLockRef.current) {
-                    try { await wakeLockRef.current.release(); wakeLockRef.current = null; } catch (err) { }
+                    try {
+                        await wakeLockRef.current.release();
+                        wakeLockRef.current = null;
+                    } catch {
+                        // ignore release errors
+                    }
                 }
                 return;
             }
-            try { if ('wakeLock' in navigator && !wakeLockRef.current) { wakeLockRef.current = await navigator.wakeLock.request('screen'); } } catch (err) { }
+            try {
+                if ('wakeLock' in navigator && !wakeLockRef.current) {
+                    wakeLockRef.current = await navigator.wakeLock.request('screen');
+                }
+            } catch {
+                // ignore wake lock request errors
+            }
         };
         const handleVisibilityChange = () => { if (document.visibilityState === 'visible') requestWakeLock(); };
         requestWakeLock();
@@ -35,7 +46,7 @@ const Layout = () => {
         return () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             if (wakeLockRef.current) {
-                wakeLockRef.current.release().catch(() => { });
+                wakeLockRef.current.release().catch(() => undefined);
             }
         };
     }, [settings.wakelockEnabled]);

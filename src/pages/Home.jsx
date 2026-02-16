@@ -930,14 +930,6 @@ const HomePage = () => {
         return `${h}시 ${m}분 ${s}초`;
     }, []);
 
-    const formatTimeShort = useCallback((seconds) => {
-        if (seconds <= 0 || !isFinite(seconds)) return '계산 중';
-        const h = Math.floor(seconds / 3600);
-        const m = Math.floor((seconds % 3600) / 60);
-        if (h > 0) return `${h}시간 ${m}분`;
-        return `${m}분`;
-    }, []);
-
     const calculateETA = useCallback((secondsLeft) => {
         if (!secondsLeft || secondsLeft <= 0) return '-';
         const now = new Date();
