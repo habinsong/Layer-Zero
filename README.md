@@ -16,6 +16,7 @@
   <img src="https://img.shields.io/badge/State-Context%20API-7C3AED" alt="Context API" />
   <img src="https://img.shields.io/badge/Realtime-SSE%20Sync-0EA5E9" alt="SSE" />
   <img src="https://img.shields.io/badge/Process-PM2-2B037A" alt="PM2" />
+  <img src="https://img.shields.io/badge/License-GPL--3.0-blue.svg" alt="License: GPL-3.0" />
 </p>
 
 </div>
@@ -314,3 +315,10 @@ npm run build
 ## 문서
 - 상세 기능/운영 가이드: [LAYER_ZERO_PROJECT_GUIDE.md](LAYER_ZERO_PROJECT_GUIDE.md)
 
+---
+
+## 라이선스
+이 프로젝트는 **GNU General Public License v3.0 (GPL-3.0)** 하에 배포됩니다.
+
+- 라이선스 전문: [LICENSE](LICENSE)
+- SPDX 식별자: `GPL-3.0`

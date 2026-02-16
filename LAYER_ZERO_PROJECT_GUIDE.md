@@ -420,3 +420,10 @@ pm2 startup
 - 고급 알림 채널(메일/메신저/Web Push)
 - 다중 프린터 큐 운영(스케줄링)
 
+---
+
+## 11. 라이선스
+본 프로젝트는 **GNU General Public License v3.0 (GPL-3.0)** 라이선스를 따릅니다.
+
+- 루트 라이선스 파일: [LICENSE](LICENSE)
+- SPDX 식별자: `GPL-3.0`
