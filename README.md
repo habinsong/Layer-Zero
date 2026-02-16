@@ -113,23 +113,76 @@ Layer Zero는 이 흐름을 하나의 운영 루프로 통합합니다.
 
 ## 화면 둘러보기
 
+> 아래 갤러리는 **큰 미리보기** 기준으로 구성되어 있습니다. 화면이 좁은 환경에서는 표를 좌우로 스크롤해서 확인할 수 있습니다.
+
 ### 1) 홈 / 프린터 / 웹캠
-| 홈 | 프린터 | 웹캠 |
-|---|---|---|
-| ![home-light](photo/docs/home-light.png) | ![printer-light](photo/docs/printer-light.png) | ![webcam-light](photo/docs/webcam-light.png) |
-| ![home-dark](photo/docs/home-dark.png) | ![printer-dark](photo/docs/printer-dark.png) | ![webcam-dark](photo/docs/webcam-dark.png) |
+<table>
+  <thead>
+    <tr>
+      <th>홈 (Light)</th>
+      <th>프린터 (Light)</th>
+      <th>웹캠 (Light)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><img src="photo/docs/home-light.png" alt="home-light" width="520" /></td>
+      <td><img src="photo/docs/printer-light.png" alt="printer-light" width="520" /></td>
+      <td><img src="photo/docs/webcam-light.png" alt="webcam-light" width="520" /></td>
+    </tr>
+    <tr>
+      <td><img src="photo/docs/home-dark.png" alt="home-dark" width="520" /></td>
+      <td><img src="photo/docs/printer-dark.png" alt="printer-dark" width="520" /></td>
+      <td><img src="photo/docs/webcam-dark.png" alt="webcam-dark" width="520" /></td>
+    </tr>
+  </tbody>
+</table>
 
 ### 2) AI 챗봇 / 유지보수 / 리포트
-| AI 챗봇 | 유지보수 | 리포트 |
-|---|---|---|
-| ![chatbot-light](photo/docs/chatbot-light.png) | ![maintenance-light](photo/docs/maintenance-light.png) | ![reports-light](photo/docs/reports-light.png) |
-| ![chatbot-dark](photo/docs/chatbot-dark.png) | ![maintenance-dark](photo/docs/maintenance-dark.png) | ![reports-dark](photo/docs/reports-dark.png) |
+<table>
+  <thead>
+    <tr>
+      <th>AI 챗봇 (Light)</th>
+      <th>유지보수 (Light)</th>
+      <th>리포트 (Light)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><img src="photo/docs/chatbot-light.png" alt="chatbot-light" width="520" /></td>
+      <td><img src="photo/docs/maintenance-light.png" alt="maintenance-light" width="520" /></td>
+      <td><img src="photo/docs/reports-light.png" alt="reports-light" width="520" /></td>
+    </tr>
+    <tr>
+      <td><img src="photo/docs/chatbot-dark.png" alt="chatbot-dark" width="520" /></td>
+      <td><img src="photo/docs/maintenance-dark.png" alt="maintenance-dark" width="520" /></td>
+      <td><img src="photo/docs/reports-dark.png" alt="reports-dark" width="520" /></td>
+    </tr>
+  </tbody>
+</table>
 
 ### 3) 3D 도안 / 도구 / 설정
-| 3D 도안 | 도구 | 설정 |
-|---|---|---|
-| ![models-light](photo/docs/models-models-light.png) | ![tools-light](photo/docs/tools-light.png) | ![settings-light](photo/docs/settings-light.png) |
-| ![models-dark](photo/docs/models-models-dark.png) | ![tools-dark](photo/docs/tools-dark.png) | ![settings-dark](photo/docs/settings-dark.png) |
+<table>
+  <thead>
+    <tr>
+      <th>3D 도안 (Light)</th>
+      <th>도구 (Light)</th>
+      <th>설정 (Light)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><img src="photo/docs/models-models-light.png" alt="models-light" width="520" /></td>
+      <td><img src="photo/docs/tools-light.png" alt="tools-light" width="520" /></td>
+      <td><img src="photo/docs/settings-light.png" alt="settings-light" width="520" /></td>
+    </tr>
+    <tr>
+      <td><img src="photo/docs/models-models-dark.png" alt="models-dark" width="520" /></td>
+      <td><img src="photo/docs/tools-dark.png" alt="tools-dark" width="520" /></td>
+      <td><img src="photo/docs/settings-dark.png" alt="settings-dark" width="520" /></td>
+    </tr>
+  </tbody>
+</table>
 
 ---
 
