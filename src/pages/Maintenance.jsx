@@ -19,11 +19,13 @@ import { useTheme } from '../contexts/ThemeContext';
 import { cn } from '../lib/utils';
 import { useKlipperJobStats } from '../hooks/useKlipperData';
 import { sendGcode } from '../utils/moonrakerApi';
+import BedMeshSurfaceChart from '../components/BedMeshSurfaceChart';
 
 const MAINTENANCE_SCHEDULE_KEY = 'maintenance-schedule';
 const FILAMENT_SPOOL_KEY = 'filament-spool';
 const MAINTENANCE_LOG_KEY = 'maintenance-log-v1';
 const MAINTENANCE_CHECKLIST_KEY = 'maintenance-checklist-v1';
+const BED_MESH_HISTORY_KEY = 'bed-mesh-history-v1';
 
 const QUICK_COMMANDS = [
     {
@@ -74,6 +76,34 @@ const clampNumber = (value, fallback = 0) => {
     return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+function getMeshCellVisual(value, absMax, isDark) {
+    const normalized = absMax > 0 ? clamp(value / absMax, -1, 1) : 0;
+    const strength = Math.abs(normalized);
+
+    if (strength < 0.05) {
+        return {
+            backgroundColor: isDark ? 'rgba(51,65,85,0.55)' : 'rgba(226,232,240,0.9)',
+            textClass: isDark ? 'text-slate-100' : 'text-slate-800'
+        };
+    }
+    if (normalized > 0) {
+        return {
+            backgroundColor: isDark
+                ? `rgba(239,68,68,${0.28 + (0.45 * strength)})`
+                : `rgba(254,202,202,${0.50 + (0.35 * strength)})`,
+            textClass: isDark ? 'text-red-100' : 'text-red-900'
+        };
+    }
+    return {
+        backgroundColor: isDark
+            ? `rgba(59,130,246,${0.28 + (0.45 * strength)})`
+            : `rgba(191,219,254,${0.50 + (0.35 * strength)})`,
+        textClass: isDark ? 'text-blue-100' : 'text-blue-900'
+    };
+}
+
 const MaintenancePage = () => {
     const { theme } = useTheme();
     const isDark = theme === 'dark';
@@ -95,6 +125,7 @@ const MaintenancePage = () => {
     const [checklist, setChecklist] = useState(() => DEFAULT_CHECKLIST.map((item) => ({ ...item, done: false })));
     const [logs, setLogs] = useState([]);
     const [customLog, setCustomLog] = useState('');
+    const [bedMeshHistory, setBedMeshHistory] = useState([]);
 
     const appendLog = (action, detail) => {
         setLogs((prev) => {
@@ -129,9 +160,25 @@ const MaintenancePage = () => {
                 });
                 setChecklist(safeItems);
             }
+
+            const meshData = JSON.parse(localStorage.getItem(BED_MESH_HISTORY_KEY) || '[]');
+            if (Array.isArray(meshData)) setBedMeshHistory(meshData);
         } catch {
             setChecklist(DEFAULT_CHECKLIST.map((item) => ({ ...item, done: false })));
         }
+    }, []);
+
+    useEffect(() => {
+        const onStorage = () => {
+            try {
+                const meshData = JSON.parse(localStorage.getItem(BED_MESH_HISTORY_KEY) || '[]');
+                setBedMeshHistory(Array.isArray(meshData) ? meshData : []);
+            } catch {
+                setBedMeshHistory([]);
+            }
+        };
+        window.addEventListener('storage', onStorage);
+        return () => window.removeEventListener('storage', onStorage);
     }, []);
 
     const handleSaveAll = () => {
@@ -264,6 +311,14 @@ const MaintenancePage = () => {
         localStorage.setItem(MAINTENANCE_LOG_KEY, JSON.stringify([]));
     };
 
+    const clearBedMeshHistory = () => {
+        const ok = confirm('레벨링 이력을 모두 삭제할까요?');
+        if (!ok) return;
+        setBedMeshHistory([]);
+        localStorage.setItem(BED_MESH_HISTORY_KEY, JSON.stringify([]));
+        appendLog('레벨링 이력 삭제', '저장된 베드 메쉬 결과 비움');
+    };
+
     const headerMutedText = isDark ? 'text-slate-400' : 'text-slate-600';
     const softText = isDark ? 'text-slate-500' : 'text-slate-500';
     const titleText = isDark ? 'text-white' : 'text-slate-900';
@@ -321,6 +376,120 @@ const MaintenancePage = () => {
                         평균 기준 약 {remainingJobsEstimate}회 출력 가능
                     </p>
                 </div>
+            </section>
+
+            <section className="premium-card">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-black gradient-primary gradient-text flex items-center gap-2">
+                        <History className="w-5 h-5" /> 베드 레벨링 이력
+                    </h3>
+                    <button
+                        onClick={clearBedMeshHistory}
+                        className={cn('px-2.5 py-1.5 rounded-lg border text-xs font-bold inline-flex items-center gap-1', isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-800' : 'border-slate-300 text-slate-700 hover:bg-slate-100')}
+                    >
+                        <Trash2 className="w-3.5 h-3.5" /> 비우기
+                    </button>
+                </div>
+
+                {bedMeshHistory.length === 0 && (
+                    <div className={cn('text-sm', headerMutedText)}>
+                        아직 저장된 레벨링 이력이 없습니다. 홈 탭의 `BLTouch 자동 레벨링` 실행 후 저장됩니다.
+                    </div>
+                )}
+
+                {bedMeshHistory.length > 0 && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        {bedMeshHistory.slice(0, 8).map((item) => {
+                            const matrix = Array.isArray(item.matrix) ? item.matrix : [];
+                            const rows = Number(item.rows || matrix.length || 0);
+                            const cols = Number(item.cols || matrix[0]?.length || 0);
+                            const min = Number(item.min);
+                            const max = Number(item.max);
+                            const avg = Number(item.avg);
+                            return (
+                                <div key={item.id} className={cn('rounded-xl border p-3', isDark ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200')}>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className={cn('text-sm font-black', titleText)}>
+                                            {rows > 0 && cols > 0 ? `${rows}x${cols} 메쉬` : '메쉬'}
+                                        </div>
+                                        <div className={cn('text-[11px]', softText)}>
+                                            {item.createdAt ? new Date(item.createdAt).toLocaleString('ko-KR', { hour12: false }) : '-'}
+                                        </div>
+                                    </div>
+                                    {item.filename && (
+                                        <div className={cn('mt-1 text-[11px]', headerMutedText)}>
+                                            파일: {item.filename}
+                                        </div>
+                                    )}
+                                    <div className="mt-2 grid grid-cols-3 gap-2">
+                                        <div className={cn('rounded-lg px-2 py-1.5 border text-center', isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-white')}>
+                                            <div className="text-[10px] text-slate-500">Min</div>
+                                            <div className={cn('text-xs font-mono font-bold', titleText)}>{Number.isFinite(min) ? min.toFixed(3) : '-'}</div>
+                                        </div>
+                                        <div className={cn('rounded-lg px-2 py-1.5 border text-center', isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-white')}>
+                                            <div className="text-[10px] text-slate-500">Avg</div>
+                                            <div className={cn('text-xs font-mono font-bold', titleText)}>{Number.isFinite(avg) ? avg.toFixed(3) : '-'}</div>
+                                        </div>
+                                        <div className={cn('rounded-lg px-2 py-1.5 border text-center', isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-white')}>
+                                            <div className="text-[10px] text-slate-500">Max</div>
+                                            <div className={cn('text-xs font-mono font-bold', titleText)}>{Number.isFinite(max) ? max.toFixed(3) : '-'}</div>
+                                        </div>
+                                    </div>
+
+                                    {matrix.length > 0 && (
+                                        <div className={cn('mt-2 rounded-lg border p-2', isDark ? 'border-slate-700 bg-slate-950/40' : 'border-slate-200 bg-white')}>
+                                            <BedMeshSurfaceChart
+                                                matrix={matrix}
+                                                isDark={isDark}
+                                                title="평탄도 3D 그래프"
+                                                chartHeight={250}
+                                                className="mb-2"
+                                            />
+                                            <div className="flex items-center justify-between text-[10px] mb-1.5">
+                                                <span className={cn(isDark ? 'text-blue-300' : 'text-blue-700')}>낮음(-)</span>
+                                                <span className={cn(isDark ? 'text-slate-300' : 'text-slate-700')}>기준(0)</span>
+                                                <span className={cn(isDark ? 'text-red-300' : 'text-red-700')}>높음(+)</span>
+                                            </div>
+                                            {(() => {
+                                                const values = matrix.flat().map((v) => Number(v)).filter((v) => Number.isFinite(v));
+                                                const minV = values.length ? Math.min(...values) : 0;
+                                                const maxV = values.length ? Math.max(...values) : 0;
+                                                const absMax = Math.max(Math.abs(minV), Math.abs(maxV), 0.0001);
+                                                return (
+                                            <div className="space-y-1">
+                                                {matrix.map((row, rowIdx) => {
+                                                    return (
+                                                        <div key={`${item.id}-heat-row-${rowIdx}`} className="flex items-center gap-1">
+                                                            <div className={cn('w-4 text-[9px] font-bold', isDark ? 'text-slate-400' : 'text-slate-500')}>{rowIdx + 1}</div>
+                                                            <div className="grid gap-1 flex-1" style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))` }}>
+                                                                {Array.isArray(row) && row.map((value, colIdx) => {
+                                                                    const num = Number(value);
+                                                                    const visual = getMeshCellVisual(num, absMax, isDark);
+                                                                    return (
+                                                                        <div
+                                                                            key={`${item.id}-heat-cell-${rowIdx}-${colIdx}`}
+                                                                            className={cn('rounded px-1 py-0.5 text-[10px] text-center font-mono border', isDark ? 'border-slate-700' : 'border-slate-300', visual.textClass)}
+                                                                            style={{ backgroundColor: visual.backgroundColor }}
+                                                                            title={`${num.toFixed(3)} mm`}
+                                                                        >
+                                                                            {num.toFixed(3)}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                                );
+                                            })()}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </section>
 
             <section className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Clock, Lightbulb, Activity, Thermometer, Droplets, Zap, TrendingUp, Cpu, Layers, Gauge, Wind, Flame, FileCode, Fan, ArrowUpFromLine, Cloud, AlertTriangle, Play, Pause, CheckCircle2, LayoutDashboard, Timer, Ruler, Radio, Image as ImageIcon, Receipt, Coins, TerminalSquare, Send, Check, X, Home as HomeIcon } from 'lucide-react';
 import { useKlipperDashboardData } from '../hooks/useKlipperData';
-import { sendGcode, emergencyStop, pausePrint, resumePrint, setZOffset, getGcodeMacroList, resetPrintState } from '../utils/moonrakerApi';
+import { sendGcode, emergencyStop, pausePrint, resumePrint, setZOffset, getGcodeMacroList, resetPrintState, getPrinterObjects } from '../utils/moonrakerApi';
 import { useWeather } from '../hooks/useWeather';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
@@ -9,11 +9,43 @@ import { cn } from '../lib/utils';
 import TemperatureChart from '../components/TemperatureChart';
 import FileManager from '../components/FileManager';
 import CollapsibleSection from '../components/CollapsibleSection';
+import BedMeshSurfaceChart from '../components/BedMeshSurfaceChart';
 import { sendPrintCompleteNotification } from '../utils/notificationManager';
 import { savePrintReport } from '../utils/reportManager';
 
+const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+function getMeshCellVisual(value, absMax, isDark) {
+    const normalized = absMax > 0 ? clamp(value / absMax, -1, 1) : 0;
+    const strength = Math.abs(normalized);
+
+    if (strength < 0.05) {
+        return {
+            backgroundColor: isDark ? 'rgba(51,65,85,0.55)' : 'rgba(226,232,240,0.9)',
+            textClass: isDark ? 'text-slate-100' : 'text-slate-800'
+        };
+    }
+
+    if (normalized > 0) {
+        return {
+            backgroundColor: isDark
+                ? `rgba(239,68,68,${0.28 + (0.45 * strength)})`
+                : `rgba(254,202,202,${0.50 + (0.35 * strength)})`,
+            textClass: isDark ? 'text-red-100' : 'text-red-900'
+        };
+    }
+
+    return {
+        backgroundColor: isDark
+            ? `rgba(59,130,246,${0.28 + (0.45 * strength)})`
+            : `rgba(191,219,254,${0.50 + (0.35 * strength)})`,
+        textClass: isDark ? 'text-blue-100' : 'text-blue-900'
+    };
+}
+
 const HomePage = () => {
     const CONSOLE_HISTORY_KEY = 'home-console-history-v1';
+    const BED_MESH_HISTORY_KEY = 'bed-mesh-history-v1';
     const { theme } = useTheme();
     const { settings } = useSettings();
     const [time, setTime] = useState(new Date());
@@ -51,6 +83,26 @@ const HomePage = () => {
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [thumbnailView, setThumbnailView] = useState({ src: '', status: 'idle', idx: 0, key: '' });
     const [isThumbnailModalOpen, setIsThumbnailModalOpen] = useState(false);
+    const [meshResultModal, setMeshResultModal] = useState({
+        open: false,
+        matrix: [],
+        rows: 0,
+        cols: 0,
+        message: ''
+    });
+    const [levelingProgress, setLevelingProgress] = useState({
+        visible: false,
+        running: false,
+        currentStep: -1,
+        message: '',
+        steps: [
+            { key: 'heat', label: '베드 50°C 가열', status: 'pending' },
+            { key: 'home', label: 'G28 홈 이동', status: 'pending' },
+            { key: 'probe', label: 'BED_MESH_CALIBRATE 측정', status: 'pending' },
+            { key: 'fetch', label: '메쉬 결과 수집', status: 'pending' },
+            { key: 'save', label: 'SAVE_CONFIG 저장', status: 'pending' }
+        ]
+    });
     const hasSeenActivePrintRef = useRef(false);
     const completionNotifiedRef = useRef(false);
     const activePrintStartedAtRef = useRef(null);
@@ -500,6 +552,260 @@ const HomePage = () => {
         });
     }, [CONSOLE_HISTORY_KEY]);
 
+    const saveBedMeshHistory = useCallback((matrix) => {
+        if (!Array.isArray(matrix) || matrix.length === 0) return;
+        try {
+            const rows = matrix.length;
+            const cols = matrix[0]?.length || 0;
+            const flatten = matrix.flat().filter((v) => Number.isFinite(Number(v))).map(Number);
+            const min = flatten.length > 0 ? Math.min(...flatten) : null;
+            const max = flatten.length > 0 ? Math.max(...flatten) : null;
+            const avg = flatten.length > 0
+                ? flatten.reduce((sum, v) => sum + v, 0) / flatten.length
+                : null;
+
+            const history = (() => {
+                try {
+                    const raw = localStorage.getItem(BED_MESH_HISTORY_KEY);
+                    const parsed = raw ? JSON.parse(raw) : [];
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch {
+                    return [];
+                }
+            })();
+
+            const record = {
+                id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                createdAt: new Date().toISOString(),
+                filename: printProgress.filename || '',
+                rows,
+                cols,
+                min,
+                max,
+                avg,
+                matrix
+            };
+
+            const next = [record, ...history].slice(0, 20);
+            localStorage.setItem(BED_MESH_HISTORY_KEY, JSON.stringify(next));
+            window.dispatchEvent(new Event('storage'));
+        } catch {
+            // ignore storage failures
+        }
+    }, [BED_MESH_HISTORY_KEY, printProgress.filename]);
+
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const normalizeMatrix = (value) => {
+        if (!Array.isArray(value) || value.length === 0 || !value.every((row) => Array.isArray(row))) return null;
+        const normalized = value.map((row) => row.map((v) => Number(v)).filter((v) => Number.isFinite(v)));
+        if (normalized.length === 0 || normalized[0].length === 0) return null;
+        return normalized;
+    };
+
+    const extractExpectedGrid = (bedMesh) => {
+        if (!bedMesh || typeof bedMesh !== 'object') return null;
+        const x = Number(
+            bedMesh?.x_count ??
+            bedMesh?.mesh_x_count ??
+            bedMesh?.mesh_params?.x_count ??
+            bedMesh?.mesh_params?.mesh_x_count ??
+            bedMesh?.mesh_config?.x_count ??
+            bedMesh?.mesh_config?.mesh_x_count
+        );
+        const y = Number(
+            bedMesh?.y_count ??
+            bedMesh?.mesh_y_count ??
+            bedMesh?.mesh_params?.y_count ??
+            bedMesh?.mesh_params?.mesh_y_count ??
+            bedMesh?.mesh_config?.y_count ??
+            bedMesh?.mesh_config?.mesh_y_count
+        );
+        if (Number.isFinite(x) && x > 0 && Number.isFinite(y) && y > 0) {
+            return { rows: y, cols: x };
+        }
+        return null;
+    };
+
+    const pickClosestMatrix = (candidates, expectedGrid) => {
+        if (!Array.isArray(candidates) || candidates.length === 0) return null;
+        if (!expectedGrid) return candidates[0] || null;
+
+        let best = null;
+        let bestScore = Number.POSITIVE_INFINITY;
+        candidates.forEach((matrix) => {
+            const rows = matrix.length;
+            const cols = matrix[0]?.length || 0;
+            const score = Math.abs(rows - expectedGrid.rows) + Math.abs(cols - expectedGrid.cols);
+            if (score < bestScore) {
+                bestScore = score;
+                best = matrix;
+            }
+        });
+        return best;
+    };
+
+    const extractMatrixFromBedMesh = useCallback((bedMesh) => {
+        if (!bedMesh || typeof bedMesh !== 'object') return null;
+
+        const expectedGrid = extractExpectedGrid(bedMesh);
+        // 실측 포인트 우선(probed_matrix), 보간(mesh_matrix)은 후순위
+        const candidateKeys = ['probed_matrix', 'points', 'matrix', 'mesh', 'mesh_matrix'];
+        const rootCandidates = [];
+        for (const key of candidateKeys) {
+            const normalized = normalizeMatrix(bedMesh[key]);
+            if (normalized) rootCandidates.push(normalized);
+        }
+        const pickedRoot = pickClosestMatrix(rootCandidates, expectedGrid);
+        if (pickedRoot) return pickedRoot;
+
+        // 일부 펌웨어/환경에서 profiles 내부에 매트릭스가 있을 수 있음
+        const profiles = bedMesh.profiles;
+        if (profiles && typeof profiles === 'object') {
+            const profileName = String(bedMesh.profile_name || '').trim();
+            const profile = profileName ? profiles[profileName] : Object.values(profiles)[0];
+            if (profile && typeof profile === 'object') {
+                const profileCandidates = [];
+                for (const key of candidateKeys) {
+                    const normalized = normalizeMatrix(profile[key]);
+                    if (normalized) profileCandidates.push(normalized);
+                }
+                const pickedProfile = pickClosestMatrix(profileCandidates, expectedGrid);
+                if (pickedProfile) return pickedProfile;
+            }
+        }
+
+        return null;
+    }, []);
+
+    const fetchBedMeshMatrix = useCallback(async (maxWaitMs = 120000) => {
+        const start = Date.now();
+        while (Date.now() - start < maxWaitMs) {
+            const result = await getPrinterObjects(['bed_mesh']);
+            if (result.success) {
+                const bedMesh = result.result?.status?.bed_mesh;
+                const matrix = extractMatrixFromBedMesh(bedMesh);
+                if (matrix && matrix.length > 0) return matrix;
+            }
+            await sleep(1500);
+        }
+        return null;
+    }, [extractMatrixFromBedMesh]);
+
+    const handleAutoBedMeshLevel = useCallback(async () => {
+        const ok = confirm('자동 레벨링을 시작할까요?\n순서: 베드 50°C 가열 -> G28 -> BED_MESH_CALIBRATE -> SAVE_CONFIG\n(SAVE_CONFIG 실행 시 Klipper가 재시작될 수 있습니다)');
+        if (!ok) return;
+
+        setControlLoading(true);
+        setConsoleStatus({ type: '', text: '' });
+        setLevelingProgress({
+            visible: true,
+            running: true,
+            currentStep: 0,
+            message: '1/5 단계: 베드 가열 중 (50°C)',
+            steps: [
+                { key: 'heat', label: '베드 50°C 가열', status: 'running' },
+                { key: 'home', label: 'G28 홈 이동', status: 'pending' },
+                { key: 'probe', label: 'BED_MESH_CALIBRATE 측정', status: 'pending' },
+                { key: 'fetch', label: '메쉬 결과 수집', status: 'pending' },
+                { key: 'save', label: 'SAVE_CONFIG 저장', status: 'pending' }
+            ]
+        });
+        try {
+            setConsoleStatus({ type: 'success', text: '베드 50°C 예열 중...' });
+            const heatTargetResult = await sendGcode('SET_HEATER_TEMPERATURE HEATER=heater_bed TARGET=50');
+            if (!heatTargetResult.success) throw new Error(heatTargetResult.error || '베드 가열 명령 실패');
+            const heatWaitResult = await sendGcode('TEMPERATURE_WAIT SENSOR=heater_bed MINIMUM=49');
+            if (!heatWaitResult.success) throw new Error(heatWaitResult.error || '베드 가열 대기 실패');
+
+            const homeResult = await sendGcode('G28');
+            if (!homeResult.success) throw new Error(homeResult.error || 'G28 실패');
+            setLevelingProgress((prev) => ({
+                ...prev,
+                currentStep: 1,
+                message: '2/5 단계: 홈 이동 실행 중',
+                steps: prev.steps.map((step, idx) => (
+                    idx === 0 ? { ...step, status: 'done' } : idx === 1 ? { ...step, status: 'running' } : step
+                ))
+            }));
+
+            setLevelingProgress((prev) => ({
+                ...prev,
+                currentStep: 2,
+                message: '3/5 단계: 베드 메쉬 측정 중',
+                steps: prev.steps.map((step, idx) => (
+                    idx === 1 ? { ...step, status: 'done' } : idx === 2 ? { ...step, status: 'running' } : step
+                ))
+            }));
+            const meshResult = await sendGcode('BED_MESH_CALIBRATE');
+            if (!meshResult.success) throw new Error(meshResult.error || 'BED_MESH_CALIBRATE 실패');
+
+            setConsoleStatus({ type: 'success', text: '레벨링 측정 중... 잠시만 기다려주세요' });
+            setLevelingProgress((prev) => ({
+                ...prev,
+                currentStep: 3,
+                message: '4/5 단계: 측정 결과 읽는 중',
+                steps: prev.steps.map((step, idx) => (
+                    idx === 2 ? { ...step, status: 'done' } : idx === 3 ? { ...step, status: 'running' } : step
+                ))
+            }));
+            const matrix = await fetchBedMeshMatrix(120000);
+
+            setLevelingProgress((prev) => ({
+                ...prev,
+                currentStep: 4,
+                message: '5/5 단계: 설정 저장 중',
+                steps: prev.steps.map((step, idx) => (
+                    idx === 3 ? { ...step, status: 'done' } : idx === 4 ? { ...step, status: 'running' } : step
+                ))
+            }));
+            const saveResult = await sendGcode('SAVE_CONFIG');
+            if (!saveResult.success) throw new Error(saveResult.error || 'SAVE_CONFIG 실패');
+
+            const rows = Array.isArray(matrix) ? matrix.length : 0;
+            const cols = rows > 0 ? matrix[0].length : 0;
+            if (rows > 0 && cols > 0) {
+                saveBedMeshHistory(matrix);
+            }
+            setMeshResultModal({
+                open: true,
+                matrix: matrix || [],
+                rows,
+                cols,
+                message: rows > 0 && cols > 0
+                    ? `레벨링 완료 (${rows}x${cols})`
+                    : '레벨링 완료 (매트릭스 데이터를 읽지 못함)'
+            });
+            setConsoleStatus({ type: 'success', text: 'BLTouch 자동 레벨링 완료' });
+            setLevelingProgress((prev) => ({
+                ...prev,
+                running: false,
+                currentStep: 4,
+                message: '자동 레벨링 완료',
+                steps: prev.steps.map((step) => ({ ...step, status: 'done' }))
+            }));
+            appendConsoleHistory({
+                id: `${Date.now()}-${Math.random()}`,
+                command: 'Bed 50C > G28 > BED_MESH_CALIBRATE > SAVE_CONFIG',
+                timestamp: new Date().toLocaleTimeString('ko-KR', { hour12: false }),
+                success: true
+            });
+        } catch (error) {
+            setConsoleStatus({ type: 'error', text: `자동 레벨링 실패: ${error.message}` });
+            setLevelingProgress((prev) => ({
+                ...prev,
+                running: false,
+                message: `실패: ${error.message}`,
+                steps: prev.steps.map((step, idx) => (
+                    idx === prev.currentStep ? { ...step, status: 'error' } : step
+                ))
+            }));
+            alert(`자동 레벨링 실패: ${error.message}`);
+        } finally {
+            setControlLoading(false);
+        }
+    }, [appendConsoleHistory, fetchBedMeshMatrix, saveBedMeshHistory]);
+
     const handleSendConsoleCommand = useCallback(async (script) => {
         const command = (script ?? consoleCommand).trim();
         if (!command) return;
@@ -617,6 +923,14 @@ const HomePage = () => {
     const circleRadius = 32;
     const circleCircumference = 2 * Math.PI * circleRadius;
     const progressStroke = circleCircumference * (1 - (progressValue / 100));
+    const meshStats = useMemo(() => {
+        const matrix = Array.isArray(meshResultModal.matrix) ? meshResultModal.matrix : [];
+        const values = matrix.flat().map((v) => Number(v)).filter((v) => Number.isFinite(v));
+        const min = values.length ? Math.min(...values) : 0;
+        const max = values.length ? Math.max(...values) : 0;
+        const absMax = Math.max(Math.abs(min), Math.abs(max), 0.0001);
+        return { min, max, absMax };
+    }, [meshResultModal.matrix]);
 
     const getStatusText = (status) => {
         switch (status) {
@@ -957,7 +1271,63 @@ const HomePage = () => {
                                 <button onClick={handlePreheatPLA} disabled={controlLoading} className={cn("p-2 md:p-4 rounded-xl font-black text-white transition-all relative overflow-hidden group flex flex-col items-center justify-center gap-1 md:gap-2", "bg-gradient-to-br from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700", controlLoading && "opacity-50")}><Flame className="w-5 h-5 md:w-8 md:h-8" /><span className="text-[10px] md:text-sm whitespace-nowrap">예열</span></button>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="bg-slate-100 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800"><div className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 text-center uppercase tracking-wider">Z-Offset 제어</div><div className="flex gap-2"><button onClick={() => handleZOffset(-0.05)} className="flex-1 py-3 rounded-lg bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-white font-bold transition-all active:scale-95">-0.05</button><button onClick={() => handleZOffset(0.05)} className="flex-1 py-3 rounded-lg bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-white font-bold transition-all active:scale-95">+0.05</button></div></div>
+                                <div className="bg-slate-100 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+                                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 text-center uppercase tracking-wider">Z-Offset 제어</div>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => handleZOffset(-0.05)} disabled={controlLoading} className="flex-1 py-3 rounded-lg bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-white font-bold transition-all active:scale-95 disabled:opacity-50">-0.05</button>
+                                        <button onClick={() => handleZOffset(0.05)} disabled={controlLoading} className="flex-1 py-3 rounded-lg bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-white font-bold transition-all active:scale-95 disabled:opacity-50">+0.05</button>
+                                    </div>
+                                    <button
+                                        onClick={handleAutoBedMeshLevel}
+                                        disabled={controlLoading}
+                                        className="mt-2 w-full py-2.5 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 text-white text-xs md:text-sm font-black tracking-wide disabled:opacity-50"
+                                    >
+                                        자동레벨링
+                                    </button>
+                                    {levelingProgress.visible && (
+                                        <div className={cn(
+                                            "mt-2.5 rounded-lg border px-2.5 py-2",
+                                            theme === 'dark' ? "border-slate-700 bg-slate-950/40" : "border-slate-200 bg-white"
+                                        )}>
+                                            <div className={cn(
+                                                "text-[11px] font-bold mb-1.5",
+                                                levelingProgress.running
+                                                    ? (theme === 'dark' ? "text-cyan-300" : "text-cyan-700")
+                                                    : levelingProgress.message.startsWith('실패')
+                                                        ? (theme === 'dark' ? "text-red-300" : "text-red-700")
+                                                        : (theme === 'dark' ? "text-emerald-300" : "text-emerald-700")
+                                            )}>
+                                                {levelingProgress.message}
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                {levelingProgress.steps.map((step, idx) => (
+                                                    <div key={step.key} className="flex items-center justify-between gap-2 text-[11px]">
+                                                        <div className={cn(
+                                                            "font-semibold",
+                                                            theme === 'dark' ? "text-slate-300" : "text-slate-700"
+                                                        )}>
+                                                            {idx + 1}. {step.label}
+                                                        </div>
+                                                        <span className={cn(
+                                                            "px-1.5 py-0.5 rounded font-bold",
+                                                            step.status === 'done'
+                                                                ? "bg-emerald-500 text-white"
+                                                                : step.status === 'running'
+                                                                    ? "bg-cyan-500 text-white"
+                                                                    : step.status === 'error'
+                                                                        ? "bg-red-500 text-white"
+                                                                        : theme === 'dark'
+                                                                            ? "bg-slate-700 text-slate-300"
+                                                                            : "bg-slate-200 text-slate-600"
+                                                        )}>
+                                                            {step.status === 'done' ? '완료' : step.status === 'running' ? '진행중' : step.status === 'error' ? '실패' : '대기'}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                                 <div className="bg-slate-100 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800"><div className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 text-center uppercase tracking-wider">빠른 매크로</div><div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto custom-scrollbar">{macros.map(macro => (<button key={macro} onClick={() => handleMacro(macro)} className="px-4 py-2 rounded-lg bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-white text-xs font-bold transition-all active:scale-95 flex-grow md:flex-grow-0">{macro}</button>))}</div></div>
                                 <div className="bg-slate-100 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
                                     <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 text-center uppercase tracking-wider inline-flex items-center justify-center gap-1 w-full">
@@ -1066,6 +1436,147 @@ const HomePage = () => {
                             <X className="w-4 h-4" />
                         </button>
                         <img src={thumbnailView.src} alt="Thumbnail Preview" className="w-full h-full max-h-[90vh] object-contain" />
+                    </div>
+                </div>
+            )}
+            {meshResultModal.open && (
+                <div
+                    className={cn(
+                        "fixed inset-0 z-[130] backdrop-blur-[1px] flex items-center justify-center p-4",
+                        theme === 'dark' ? "bg-black/70" : "bg-slate-900/45"
+                    )}
+                    onClick={() => setMeshResultModal((prev) => ({ ...prev, open: false }))}
+                >
+                    <div
+                        className={cn(
+                            "relative w-full max-w-3xl rounded-xl overflow-hidden border",
+                            theme === 'dark'
+                                ? "border-slate-700 bg-slate-900"
+                                : "border-slate-300 bg-white shadow-2xl"
+                        )}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            type="button"
+                            className={cn(
+                                "absolute right-2 top-2 z-10 p-2 rounded-lg",
+                                theme === 'dark'
+                                    ? "bg-black/50 hover:bg-black/70 text-white"
+                                    : "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300"
+                            )}
+                            onClick={() => setMeshResultModal((prev) => ({ ...prev, open: false }))}
+                            aria-label="레벨링 결과 닫기"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                        <div className={cn("px-4 py-3 border-b", theme === 'dark' ? "border-slate-700" : "border-slate-200")}>
+                            <div className={cn("text-lg font-black", theme === 'dark' ? "text-cyan-300" : "text-cyan-700")}>BLTouch 레벨링 결과</div>
+                            <div className={cn("text-sm mt-1", theme === 'dark' ? "text-slate-300" : "text-slate-600")}>{meshResultModal.message}</div>
+                        </div>
+                        <div className="p-4 max-h-[70vh] overflow-auto">
+                            {Array.isArray(meshResultModal.matrix) && meshResultModal.matrix.length > 0 ? (
+                                <div className="space-y-4">
+                                    <BedMeshSurfaceChart
+                                        matrix={meshResultModal.matrix}
+                                        isDark={theme === 'dark'}
+                                        title="평탄도 3D 그래프 (단위: mm)"
+                                    />
+                                    <div className={cn(
+                                        "rounded-xl border p-3",
+                                        theme === 'dark' ? "border-slate-700 bg-slate-900/60" : "border-slate-200 bg-slate-50"
+                                    )}>
+                                        <div className="flex items-center justify-between gap-2 mb-2">
+                                            <div className={cn("text-xs font-bold", theme === 'dark' ? "text-slate-300" : "text-slate-700")}>
+                                                베드 높이 편차 히트맵 (단위: mm)
+                                            </div>
+                                            <div className={cn("text-[11px] font-mono", theme === 'dark' ? "text-slate-400" : "text-slate-600")}>
+                                                Min {meshStats.min.toFixed(3)} / Max {meshStats.max.toFixed(3)}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between text-[11px] mb-2">
+                                            <span className={cn(theme === 'dark' ? "text-blue-300" : "text-blue-700")}>낮음 (-)</span>
+                                            <span className={cn(theme === 'dark' ? "text-slate-300" : "text-slate-700")}>기준 (0)</span>
+                                            <span className={cn(theme === 'dark' ? "text-red-300" : "text-red-700")}>높음 (+)</span>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            {meshResultModal.matrix.map((row, rowIdx) => (
+                                                <div key={`mesh-heat-row-${rowIdx}`} className="flex items-center gap-1.5">
+                                                    <div className={cn("w-5 text-[10px] font-bold", theme === 'dark' ? "text-slate-400" : "text-slate-500")}>Y{rowIdx + 1}</div>
+                                                    <div className="grid gap-1 flex-1" style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))` }}>
+                                                        {row.map((value, colIdx) => {
+                                                            const num = Number(value);
+                                                            const visual = getMeshCellVisual(num, meshStats.absMax, theme === 'dark');
+                                                            const mark = num > 0.0005 ? '▲' : num < -0.0005 ? '▼' : '•';
+                                                            return (
+                                                                <div
+                                                                    key={`mesh-heat-cell-${rowIdx}-${colIdx}`}
+                                                                    className={cn("rounded-md border px-1 py-1 text-center", theme === 'dark' ? "border-slate-700" : "border-slate-300")}
+                                                                    style={{ backgroundColor: visual.backgroundColor }}
+                                                                    title={`X${colIdx + 1}, Y${rowIdx + 1}: ${num.toFixed(3)} mm`}
+                                                                >
+                                                                    <div className={cn("text-[10px] leading-none font-mono font-bold", visual.textClass)}>{num.toFixed(3)}</div>
+                                                                    <div className={cn("text-[9px] leading-none mt-0.5", visual.textClass)}>{mark}</div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            <div className={cn("text-[10px] text-right mt-1", theme === 'dark' ? "text-slate-500" : "text-slate-500")}>
+                                                X축: 좌→우 / Y축: 앞→뒤 (프린터 설정 기준)
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <table className="w-full text-sm border-collapse">
+                                        <thead>
+                                            <tr>
+                                                <th className={cn(
+                                                    "px-2 py-1.5 text-xs border",
+                                                    theme === 'dark'
+                                                        ? "text-slate-300 border-slate-700 bg-slate-800"
+                                                        : "text-slate-600 border-slate-300 bg-slate-100"
+                                                )}>Y\\X</th>
+                                                {meshResultModal.matrix[0].map((_, colIdx) => (
+                                                    <th key={`mx-col-${colIdx}`} className={cn(
+                                                        "px-2 py-1.5 text-xs border",
+                                                        theme === 'dark'
+                                                            ? "text-slate-300 border-slate-700 bg-slate-800"
+                                                            : "text-slate-700 border-slate-300 bg-slate-100"
+                                                    )}>{colIdx + 1}</th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {meshResultModal.matrix.map((row, rowIdx) => (
+                                                <tr key={`mx-row-${rowIdx}`}>
+                                                    <th className={cn(
+                                                        "px-2 py-1.5 text-xs border",
+                                                        theme === 'dark'
+                                                            ? "text-slate-300 border-slate-700 bg-slate-800"
+                                                            : "text-slate-700 border-slate-300 bg-slate-100"
+                                                    )}>{rowIdx + 1}</th>
+                                                    {row.map((value, colIdx) => (
+                                                        <td key={`mx-cell-${rowIdx}-${colIdx}`} className={cn(
+                                                            "px-2 py-1.5 text-center border font-mono",
+                                                            theme === 'dark'
+                                                                ? "text-slate-100 border-slate-700 bg-slate-900"
+                                                                : "text-slate-800 border-slate-300 bg-white"
+                                                        )}>
+                                                            {Number(value).toFixed(3)}
+                                                        </td>
+                                                    ))}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className={cn("text-sm", theme === 'dark' ? "text-slate-300" : "text-slate-700")}>
+                                    매트릭스 값을 가져오지 못했습니다. 콘솔 로그 또는 `BED_MESH_OUTPUT`로 결과를 확인하세요.
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

@@ -158,13 +158,24 @@ const SettingsPage = () => {
                         const response = await fetch(url, { signal: controller.signal });
                         if (!response.ok) throw new Error(`검색 실패 (${response.status})`);
                         const data = await response.json();
-                        return Array.isArray(data?.results) ? data.results : [];
+                        const first = Array.isArray(data?.results) ? data.results : [];
+                        if (first.length > 0) return first;
+
+                        const fallbackUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=60&language=ko&format=json`;
+                        const fallbackRes = await fetch(fallbackUrl, { signal: controller.signal });
+                        if (!fallbackRes.ok) return first;
+                        const fallbackData = await fallbackRes.json();
+                        return Array.isArray(fallbackData?.results) ? fallbackData.results : first;
                     })
                 );
                 const apiItems = apiResults
                     .filter((entry) => entry.status === 'fulfilled')
                     .flatMap((entry) => entry.value)
-                    .filter((item) => String(item?.country_code || '').toUpperCase() === 'KR');
+                    .filter((item) => {
+                        const cc = String(item?.country_code || '').toUpperCase();
+                        const country = String(item?.country || '');
+                        return cc === 'KR' || country.includes('대한민국');
+                    });
                 const presetItems = KOREA_CITY_PRESETS.filter((item) => {
                     const haystack = `${item.name} ${item.admin1} ${item.country}`.toLowerCase();
                     return haystack.includes(keyword.toLowerCase());
