@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { BarChart3, Trash2, FileText, AlertTriangle, Coins, Clock3, Filter, ChevronDown, ChevronUp, TrendingUp, Activity } from 'lucide-react';
-import { clearPrintReports, getPrintReports, removePrintReport } from '../utils/reportManager';
+import { clearPrintReports, deletePrintReport, getPrintReports, removePrintReport, setPrintReports, syncPrintReportsFromServer, upsertPrintReport } from '../utils/reportManager';
 import { cn } from '../lib/utils';
 import { useTheme } from '../contexts/ThemeContext';
+import { subscribeServerEvents } from '../utils/centralApi';
 
 const toMinuteText = (seconds) => `${Math.round((Number(seconds || 0)) / 60)}분`;
 
@@ -24,21 +25,43 @@ const ReportsPage = () => {
     const [filter, setFilter] = useState('all');
     const [expandedId, setExpandedId] = useState(null);
 
-    const reloadReports = () => {
+    const reloadReports = useCallback(async () => {
         setReports(getPrintReports());
-    };
+        const synced = await syncPrintReportsFromServer();
+        setReports(Array.isArray(synced) ? synced : getPrintReports());
+    }, []);
 
     useEffect(() => {
         reloadReports();
-        const onStorage = () => reloadReports();
-        const onReportUpdated = () => reloadReports();
+        const onStorage = () => { reloadReports(); };
+        const onReportUpdated = () => { reloadReports(); };
         window.addEventListener('storage', onStorage);
         window.addEventListener('reportUpdated', onReportUpdated);
         return () => {
             window.removeEventListener('storage', onStorage);
             window.removeEventListener('reportUpdated', onReportUpdated);
         };
-    }, []);
+    }, [reloadReports]);
+
+    useEffect(() => {
+        const unsubscribe = subscribeServerEvents((event) => {
+            if (!event || event.type !== 'reports.updated') return;
+            if (event.action === 'upsert' && event.item) {
+                setReports(upsertPrintReport(event.item));
+                return;
+            }
+            if (event.action === 'delete') {
+                setReports(deletePrintReport(event.id));
+                return;
+            }
+            if (event.action === 'clear') {
+                setReports(setPrintReports([]));
+                return;
+            }
+            reloadReports();
+        });
+        return () => unsubscribe();
+    }, [reloadReports]);
 
     const filteredReports = useMemo(() => {
         if (filter === 'all') return reports;

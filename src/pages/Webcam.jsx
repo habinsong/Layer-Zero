@@ -6,6 +6,9 @@ import { useTheme } from '../contexts/ThemeContext';
 import { APP_ENV } from '../config/env';
 
 const ROTATION_OPTIONS = [0, 90, 180, 270];
+const ACTIVE_CAM_KEY = 'webcam-active-cam';
+const ROTATION_KEY = 'webcam-rotation';
+const MIRROR_KEY = 'webcam-mirror-x';
 
 function normalizeCaptureUrl(rawUrl) {
     if (!rawUrl) return '';
@@ -16,12 +19,13 @@ function normalizeCaptureUrl(rawUrl) {
 }
 
 const Webcam = () => {
-    const { settings } = useSettings();
+    const { settings, updateSettings } = useSettings();
     const { theme } = useTheme();
     const isDark = theme === 'dark';
+    const didHydrateServerPrefsRef = useRef(false);
 
     const [activeCam, setActiveCam] = useState(() => {
-        const saved = Number(localStorage.getItem('webcam-active-cam'));
+        const saved = Number(localStorage.getItem(ACTIVE_CAM_KEY));
         return saved === 2 ? 2 : 1;
     });
 
@@ -37,14 +41,14 @@ const Webcam = () => {
     const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
 
     const [rotation, setRotation] = useState(() => {
-        const saved = Number(localStorage.getItem('webcam-rotation'));
+        const saved = Number(localStorage.getItem(ROTATION_KEY));
         if (ROTATION_OPTIONS.includes(saved)) return saved;
         const preferred = Number(settings.webcamDefaultRotation);
         return ROTATION_OPTIONS.includes(preferred) ? preferred : 90;
     });
 
     const [isMirrored, setIsMirrored] = useState(() => {
-        const saved = localStorage.getItem('webcam-mirror-x');
+        const saved = localStorage.getItem(MIRROR_KEY);
         if (saved !== null) return saved === 'true';
         return settings.webcamMirrorX === true;
     });
@@ -61,16 +65,74 @@ const Webcam = () => {
     const processedCanvasRef = useRef(null);
 
     useEffect(() => {
-        localStorage.setItem('webcam-rotation', String(rotation));
+        if (didHydrateServerPrefsRef.current) return;
+        const hasRemotePref =
+            settings.webcamActiveCam !== undefined ||
+            settings.webcamRotation !== undefined ||
+            settings.webcamMirrorXView !== undefined ||
+            settings.webcamEnhanceEnabled !== undefined;
+        if (!hasRemotePref) return;
+
+        didHydrateServerPrefsRef.current = true;
+        const remoteCam = Number(settings.webcamActiveCam);
+        const remoteRot = Number(settings.webcamRotation);
+        const remoteMirror = settings.webcamMirrorXView;
+        const remoteEnhance = settings.webcamEnhanceEnabled;
+        const remoteUpscale = Number(settings.webcamUpscale);
+        const remoteDenoise = Number(settings.webcamDenoise);
+        const remoteContrast = Number(settings.webcamContrast);
+        const remoteBrightness = Number(settings.webcamBrightness);
+        const remoteSaturate = Number(settings.webcamSaturate);
+
+        if (remoteCam === 1 || remoteCam === 2) setActiveCam(remoteCam);
+        if (ROTATION_OPTIONS.includes(remoteRot)) setRotation(remoteRot);
+        if (typeof remoteMirror === 'boolean') setIsMirrored(remoteMirror);
+        if (typeof remoteEnhance === 'boolean') setEnhanceEnabled(remoteEnhance);
+        if (Number.isFinite(remoteUpscale) && remoteUpscale >= 1 && remoteUpscale <= 4) setUpscale(remoteUpscale);
+        if (Number.isFinite(remoteDenoise) && remoteDenoise >= 0 && remoteDenoise <= 2) setDenoise(remoteDenoise);
+        if (Number.isFinite(remoteContrast) && remoteContrast >= -20 && remoteContrast <= 30) setContrast(remoteContrast);
+        if (Number.isFinite(remoteBrightness) && remoteBrightness >= -20 && remoteBrightness <= 20) setBrightness(remoteBrightness);
+        if (Number.isFinite(remoteSaturate) && remoteSaturate >= -20 && remoteSaturate <= 30) setSaturate(remoteSaturate);
+    }, [settings]);
+
+    useEffect(() => {
+        localStorage.setItem(ROTATION_KEY, String(rotation));
     }, [rotation]);
 
     useEffect(() => {
-        localStorage.setItem('webcam-mirror-x', String(isMirrored));
+        localStorage.setItem(MIRROR_KEY, String(isMirrored));
     }, [isMirrored]);
 
     useEffect(() => {
-        localStorage.setItem('webcam-active-cam', String(activeCam));
+        localStorage.setItem(ACTIVE_CAM_KEY, String(activeCam));
     }, [activeCam]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            updateSettings({
+                webcamActiveCam: activeCam,
+                webcamRotation: rotation,
+                webcamMirrorXView: isMirrored,
+                webcamEnhanceEnabled: enhanceEnabled,
+                webcamUpscale: upscale,
+                webcamDenoise: denoise,
+                webcamContrast: contrast,
+                webcamBrightness: brightness,
+                webcamSaturate: saturate
+            });
+        }, 350);
+        return () => clearTimeout(timer);
+    }, [
+        activeCam,
+        rotation,
+        isMirrored,
+        enhanceEnabled,
+        upscale,
+        denoise,
+        contrast,
+        brightness,
+        saturate
+    ]);
 
     useEffect(() => {
         if (!hasSecondCam && activeCam === 2) setActiveCam(1);

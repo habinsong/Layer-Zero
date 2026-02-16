@@ -1,12 +1,13 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { getServerSettings, putServerSettings } from '../utils/centralApi';
 
 const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
+    const LOCAL_THEME_KEY = 'layer-zero-theme';
     const [theme, setTheme] = useState(() => {
         try {
-            // LocalStorage에서 저장된 테마 불러오기
-            const savedTheme = localStorage.getItem('layer-zero-theme');
+            const savedTheme = localStorage.getItem(LOCAL_THEME_KEY);
             return (savedTheme === 'dark' || savedTheme === 'light') ? savedTheme : 'dark';
         } catch (e) {
             console.error("Theme load error:", e);
@@ -25,8 +26,31 @@ export function ThemeProvider({ children }) {
             document.documentElement.classList.remove('dark');
         }
 
-        // LocalStorage에 저장
-        localStorage.setItem('layer-zero-theme', theme);
+        localStorage.setItem(LOCAL_THEME_KEY, theme);
+    }, [theme]);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const remote = await getServerSettings();
+                if (cancelled) return;
+                const remoteTheme = remote?.uiTheme;
+                if (remoteTheme === 'dark' || remoteTheme === 'light') {
+                    setTheme(remoteTheme);
+                    localStorage.setItem(LOCAL_THEME_KEY, remoteTheme);
+                }
+            } catch {
+                // offline/local fallback mode
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    useEffect(() => {
+        putServerSettings({ uiTheme: theme }).catch(() => {
+            // offline/local fallback mode
+        });
     }, [theme]);
 
     const toggleTheme = () => {

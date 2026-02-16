@@ -29,3 +29,6 @@ dist-ssr
 .npm-cache/
 
 .env.local
+
+# Local runtime data (never commit)
+server/data/store.json

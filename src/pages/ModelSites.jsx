@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     ExternalLink,
     Search,
@@ -14,6 +14,7 @@ import {
     Filter
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSettings } from '../context/SettingsContext';
 import { cn } from '../lib/utils';
 
 const FAVORITES_KEY = 'model-sites-favorites-v1';
@@ -96,6 +97,7 @@ const workflows = [
 
 const ThreeDResources = () => {
     const { theme } = useTheme();
+    const { settings, updateSettings } = useSettings();
     const [activeTab, setActiveTab] = useState('models');
     const [query, setQuery] = useState('');
     const [selectedTag, setSelectedTag] = useState('');
@@ -110,6 +112,17 @@ const ThreeDResources = () => {
             return [];
         }
     });
+
+    useEffect(() => {
+        const remote = settings.modelSiteFavorites;
+        if (!Array.isArray(remote)) return;
+        setFavorites(remote);
+        try {
+            localStorage.setItem(FAVORITES_KEY, JSON.stringify(remote));
+        } catch {
+            // ignore local fallback write failure
+        }
+    }, [settings.modelSiteFavorites]);
 
     const currentSites = sites[activeTab] || [];
 
@@ -141,6 +154,7 @@ const ThreeDResources = () => {
         setFavorites((prev) => {
             const next = prev.includes(url) ? prev.filter((u) => u !== url) : [...prev, url];
             localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
+            updateSettings({ modelSiteFavorites: next });
             return next;
         });
     };

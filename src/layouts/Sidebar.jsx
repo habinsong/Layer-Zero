@@ -3,35 +3,19 @@ import { NavLink } from 'react-router-dom';
 import { Home, Printer, Settings, Video, MessageSquareText, Box, Wrench, Calculator, Zap, ChevronLeft, FileText } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useKlipperStatus } from '../hooks/useKlipperData';
+import { useSettings } from '../context/SettingsContext';
 
 import { useTheme } from '../contexts/ThemeContext';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
     const { theme } = useTheme();
+    const { settings } = useSettings();
     const klipperStatus = useKlipperStatus();
-    const [printerName, setPrinterName] = useState('프린터 1');
-    // ... (기존 useEffect 코드는 동일하므로 생략 가능하지만, 전체 문맥을 위해 유지하거나 필요한 부분만 교체)
+    const [printerName, setPrinterName] = useState(settings.printerName || '프린터 1');
 
-    // localStorage에서 프린터 이름 가져오기
     useEffect(() => {
-        const updatePrinterName = () => {
-            const savedName = localStorage.getItem('printer-name') || '프린터 1';
-            setPrinterName(savedName);
-        };
-
-        updatePrinterName();
-
-        // storage 이벤트 리스너로 다른 탭에서 변경 시에도 감지
-        window.addEventListener('storage', updatePrinterName);
-
-        // 같은 탭에서 변경 감지를 위한 커스텀 이벤트
-        window.addEventListener('printerNameChanged', updatePrinterName);
-
-        return () => {
-            window.removeEventListener('storage', updatePrinterName);
-            window.removeEventListener('printerNameChanged', updatePrinterName);
-        };
-    }, []);
+        setPrinterName(settings.printerName || '프린터 1');
+    }, [settings.printerName]);
 
     const navItems = [
         { icon: Home, label: '홈', path: '/', color: 'text-blue-400' },

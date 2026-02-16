@@ -3,9 +3,11 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { Menu } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSettings } from '../context/SettingsContext';
 
 const Layout = () => {
     const { theme } = useTheme();
+    const { settings } = useSettings();
     const wakeLockRef = useRef(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth >= 768);
     const location = useLocation();
@@ -18,7 +20,7 @@ const Layout = () => {
     // WakeLock 로직 (기존 유지)
     useEffect(() => {
         const requestWakeLock = async () => {
-            const isWakelockEnabled = localStorage.getItem('wakelock-enabled') === 'true';
+            const isWakelockEnabled = settings.wakelockEnabled === true;
             if (!isWakelockEnabled) {
                 if (wakeLockRef.current) {
                     try { await wakeLockRef.current.release(); wakeLockRef.current = null; } catch (err) { }
@@ -36,7 +38,7 @@ const Layout = () => {
                 wakeLockRef.current.release().catch(() => { });
             }
         };
-    }, []);
+    }, [settings.wakelockEnabled]);
 
     return (
         /* 최상위 컨테이너: fixed inset-0로 사파리 뷰포트 고정 */

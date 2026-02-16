@@ -6,6 +6,7 @@ import { cn } from '../lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { useTheme } from '../contexts/ThemeContext'; // Theme Hook Import
 import { useSettings } from '../context/SettingsContext';
+import { clearChatMessagesRemote, getChatMessagesRemote, saveChatMessagesRemote, subscribeServerEvents } from '../utils/centralApi';
 
 // Gemini 3 Flash Preview Pricing (2025년 1월 기준)
 // 입력: $0.0025 / 1,000자 (약 $1.00 / 1M tokens, 1 token ≈ 4자)
@@ -106,7 +107,7 @@ const CodeBlock = ({ inline, className, children, ...props }) => {
 
 const AiChatbot = () => {
     const { theme } = useTheme(); // Use Theme Hook
-    const { settings } = useSettings();
+    const { settings, updateSettings } = useSettings();
     // Mode State: 'free' | 'paid'
     const [mode, setMode] = useState('free');
 
@@ -130,12 +131,16 @@ const AiChatbot = () => {
     const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
     const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
     const [mobileFontScale, setMobileFontScale] = useState(() => {
+        const fromServer = Number(settings.aiMobileFontScale);
+        if ([0.9, 0.95, 1].includes(fromServer)) return fromServer;
         const saved = Number(localStorage.getItem(MOBILE_FONT_SCALE_STORAGE_KEY));
         if ([0.9, 0.95, 1].includes(saved)) return saved;
         return window.innerWidth < 768 ? 0.95 : 1; // 모바일 기본은 약간 작게, PC는 기본 크기
     });
     const [isLatestCopied, setIsLatestCopied] = useState(false);
     const [paidModel, setPaidModel] = useState(() => {
+        const fromServer = settings.aiPaidModel;
+        if (PAID_MODEL_OPTIONS.includes(fromServer)) return fromServer;
         const saved = localStorage.getItem(PAID_MODEL_STORAGE_KEY);
         return PAID_MODEL_OPTIONS.includes(saved) ? saved : DEFAULT_MODEL;
     });
@@ -143,10 +148,15 @@ const AiChatbot = () => {
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef(null);
     const messagesContainerRef = useRef(null);
+    const messagesRef = useRef(messages);
 
     // Persistent State for Usage (날짜별 리셋 + 영구 누적)
     const [usageData, setUsageData] = useState(() => {
         // Lazy initialization: 컴포넌트 마운트 시 한 번만 실행
+        const fromServer = settings.aiUsageData;
+        if (fromServer && typeof fromServer === 'object') {
+            return normalizeUsageData(fromServer);
+        }
         const storedData = localStorage.getItem('ai_chatbot_usage_v2');
         console.log('[AI Chatbot INIT] localStorage 초기 로드:', storedData);
 
@@ -175,29 +185,33 @@ const AiChatbot = () => {
 
     const messagesEndRef = useRef(null);
 
-    // Initialize from localStorage (날짜 체크하여 Daily 항목만 리셋)
     useEffect(() => {
-        const storedData = localStorage.getItem('ai_chatbot_usage_v2');
-        console.log('[AI Chatbot] localStorage 로드:', storedData);
+        messagesRef.current = messages;
+    }, [messages]);
 
-        if (storedData) {
-            try {
-                const parsed = JSON.parse(storedData);
-                const normalized = normalizeUsageData(parsed);
-                console.log('[AI Chatbot] 정규화된 데이터:', normalized);
-                setUsageData(normalized);
-            } catch (e) {
-                console.error('[AI Chatbot] Failed to parse usage data:', e);
-            }
-        } else {
-            console.log('[AI Chatbot] localStorage 비어있음, 초기값 사용');
+    useEffect(() => {
+        if (settings.aiUsageData && typeof settings.aiUsageData === 'object') {
+            setUsageData(normalizeUsageData(settings.aiUsageData));
         }
-    }, []);
+        if ([0.9, 0.95, 1].includes(Number(settings.aiMobileFontScale))) {
+            setMobileFontScale(Number(settings.aiMobileFontScale));
+        }
+        if (PAID_MODEL_OPTIONS.includes(settings.aiPaidModel)) {
+            setPaidModel(settings.aiPaidModel);
+        }
+    }, [settings.aiUsageData, settings.aiMobileFontScale, settings.aiPaidModel]);
 
     // Save to localStorage whenever usageData changes
     useEffect(() => {
         console.log('[AI Chatbot] localStorage 저장:', usageData);
         localStorage.setItem('ai_chatbot_usage_v2', JSON.stringify(usageData));
+    }, [usageData]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            updateSettings({ aiUsageData: usageData });
+        }, 400);
+        return () => clearTimeout(timer);
     }, [usageData]);
 
     // Save chat history to localStorage
@@ -210,6 +224,62 @@ const AiChatbot = () => {
             console.error('[AI Chatbot] Failed to save chat history:', e);
         }
     }, [messages]);
+
+    // Load from backend (if available)
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const remoteMessages = await getChatMessagesRemote();
+                if (!cancelled && Array.isArray(remoteMessages) && remoteMessages.length > 0) {
+                    setMessages(remoteMessages);
+                }
+            } catch {
+                // offline/local fallback mode
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    // Sync to backend with debounce (avoid per-token flood while streaming)
+    useEffect(() => {
+        if (isLoading) return undefined;
+        const timer = setTimeout(() => {
+            const serializableMessages = messages.map(({ role, text }) => ({ role, text }));
+            saveChatMessagesRemote(serializableMessages).catch(() => {
+                // offline/local fallback mode
+            });
+        }, 900);
+        return () => clearTimeout(timer);
+    }, [messages, isLoading]);
+
+    useEffect(() => {
+        const unsubscribe = subscribeServerEvents((event) => {
+            if (!event || event.type !== 'chat.messages.updated') return;
+            if (isLoading) return;
+            if (Array.isArray(event.items)) {
+                const currentSerialized = JSON.stringify(messagesRef.current || []);
+                const remoteSerialized = JSON.stringify(event.items);
+                if (currentSerialized !== remoteSerialized) {
+                    setMessages(event.items.length > 0 ? event.items : [INITIAL_ASSISTANT_MESSAGE]);
+                }
+                return;
+            }
+            getChatMessagesRemote()
+                .then((remoteMessages) => {
+                    if (!Array.isArray(remoteMessages)) return;
+                    const currentSerialized = JSON.stringify(messagesRef.current || []);
+                    const remoteSerialized = JSON.stringify(remoteMessages);
+                    if (currentSerialized !== remoteSerialized) {
+                        setMessages(remoteMessages.length > 0 ? remoteMessages : [INITIAL_ASSISTANT_MESSAGE]);
+                    }
+                })
+                .catch(() => {
+                    // offline/local fallback mode
+                });
+        });
+        return () => unsubscribe();
+    }, [isLoading]);
 
     // Auto-scroll to bottom
     const scrollToBottom = () => {
@@ -235,7 +305,21 @@ const AiChatbot = () => {
     }, [mobileFontScale]);
 
     useEffect(() => {
+        const timer = setTimeout(() => {
+            updateSettings({ aiMobileFontScale: mobileFontScale });
+        }, 350);
+        return () => clearTimeout(timer);
+    }, [mobileFontScale]);
+
+    useEffect(() => {
         localStorage.setItem(PAID_MODEL_STORAGE_KEY, paidModel);
+    }, [paidModel]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            updateSettings({ aiPaidModel: paidModel });
+        }, 350);
+        return () => clearTimeout(timer);
     }, [paidModel]);
 
     const handleMessagesScroll = (e) => {
@@ -525,6 +609,9 @@ const AiChatbot = () => {
         if (window.confirm('대화 내용을 모두 삭제하시겠습니까?')) {
             setMessages([INITIAL_ASSISTANT_MESSAGE]);
             localStorage.removeItem(CHAT_HISTORY_STORAGE_KEY);
+            clearChatMessagesRemote().catch(() => {
+                // offline/local fallback mode
+            });
             setError(null);
         }
     };

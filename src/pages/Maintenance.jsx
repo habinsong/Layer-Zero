@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import {
     Wrench,
     AlertCircle,
@@ -20,6 +20,18 @@ import { cn } from '../lib/utils';
 import { useKlipperJobStats } from '../hooks/useKlipperData';
 import { sendGcode } from '../utils/moonrakerApi';
 import BedMeshSurfaceChart from '../components/BedMeshSurfaceChart';
+import {
+    addMaintenanceLog,
+    clearMaintenanceLogsRemote,
+    clearMeshHistoryRemote,
+    getMaintenanceChecklist,
+    getMaintenanceLogs,
+    getMaintenanceState,
+    getMeshHistory,
+    putMaintenanceChecklist,
+    putMaintenanceState,
+    subscribeServerEvents
+} from '../utils/centralApi';
 
 const MAINTENANCE_SCHEDULE_KEY = 'maintenance-schedule';
 const FILAMENT_SPOOL_KEY = 'filament-spool';
@@ -128,12 +140,56 @@ const MaintenancePage = () => {
     const [bedMeshHistory, setBedMeshHistory] = useState([]);
 
     const appendLog = (action, detail) => {
+        const item = { id: Date.now(), time: nowString(), action, detail, createdAt: new Date().toISOString() };
         setLogs((prev) => {
-            const next = [{ id: Date.now(), time: nowString(), action, detail }, ...prev].slice(0, 80);
+            const next = [item, ...prev].slice(0, 80);
             localStorage.setItem(MAINTENANCE_LOG_KEY, JSON.stringify(next));
             return next;
         });
+        addMaintenanceLog(item).catch(() => {
+            // offline/local fallback mode
+        });
     };
+
+    const loadRemoteMaintenance = useCallback(async () => {
+        try {
+            const [remoteState, remoteLogs, remoteChecklist, remoteMesh] = await Promise.all([
+                getMaintenanceState(),
+                getMaintenanceLogs(100),
+                getMaintenanceChecklist(),
+                getMeshHistory(20)
+            ]);
+
+            if (remoteState && typeof remoteState === 'object') {
+                if (remoteState.filamentName !== undefined) setFilamentName(remoteState.filamentName || '');
+                if (remoteState.filamentTotalLength !== undefined) setFilamentTotalLength(String(remoteState.filamentTotalLength ?? '1000'));
+                if (remoteState.filamentUsedLength !== undefined) setFilamentUsedLength(String(remoteState.filamentUsedLength ?? '0'));
+                if (remoteState.filamentMode) setFilamentMode(remoteState.filamentMode);
+                if (remoteState.nozzleLastReset !== undefined) setNozzleLastReset(Number(remoteState.nozzleLastReset || 0));
+                if (remoteState.greaseLastReset !== undefined) setGreaseLastReset(Number(remoteState.greaseLastReset || 0));
+                if (remoteState.mode) setMaintenanceMode(remoteState.mode);
+                if (remoteState.manualTotalHours !== undefined) setManualTotalHours(String(remoteState.manualTotalHours ?? 0));
+            }
+            if (Array.isArray(remoteLogs) && remoteLogs.length > 0) {
+                setLogs(remoteLogs);
+                localStorage.setItem(MAINTENANCE_LOG_KEY, JSON.stringify(remoteLogs));
+            }
+            if (Array.isArray(remoteChecklist) && remoteChecklist.length > 0) {
+                const safeItems = DEFAULT_CHECKLIST.map((item) => {
+                    const found = remoteChecklist.find((saved) => saved.id === item.id || saved.checklistKey === item.id);
+                    return { ...item, done: Boolean(found?.done) };
+                });
+                setChecklist(safeItems);
+                localStorage.setItem(MAINTENANCE_CHECKLIST_KEY, JSON.stringify(safeItems));
+            }
+            if (Array.isArray(remoteMesh) && remoteMesh.length > 0) {
+                setBedMeshHistory(remoteMesh);
+                localStorage.setItem(BED_MESH_HISTORY_KEY, JSON.stringify(remoteMesh));
+            }
+        } catch {
+            // offline/local fallback mode
+        }
+    }, []);
 
     useEffect(() => {
         try {
@@ -166,7 +222,9 @@ const MaintenancePage = () => {
         } catch {
             setChecklist(DEFAULT_CHECKLIST.map((item) => ({ ...item, done: false })));
         }
-    }, []);
+
+        loadRemoteMaintenance();
+    }, [loadRemoteMaintenance]);
 
     useEffect(() => {
         const onStorage = () => {
@@ -179,6 +237,71 @@ const MaintenancePage = () => {
         };
         window.addEventListener('storage', onStorage);
         return () => window.removeEventListener('storage', onStorage);
+    }, []);
+
+    useEffect(() => {
+        const unsubscribe = subscribeServerEvents((event) => {
+            if (!event || !event.type) return;
+            if (event.type === 'maintenance.state.updated' && event.data && typeof event.data === 'object') {
+                const remoteState = event.data;
+                if (remoteState.filamentName !== undefined) setFilamentName(remoteState.filamentName || '');
+                if (remoteState.filamentTotalLength !== undefined) setFilamentTotalLength(String(remoteState.filamentTotalLength ?? '1000'));
+                if (remoteState.filamentUsedLength !== undefined) setFilamentUsedLength(String(remoteState.filamentUsedLength ?? '0'));
+                if (remoteState.filamentMode) setFilamentMode(remoteState.filamentMode);
+                if (remoteState.nozzleLastReset !== undefined) setNozzleLastReset(Number(remoteState.nozzleLastReset || 0));
+                if (remoteState.greaseLastReset !== undefined) setGreaseLastReset(Number(remoteState.greaseLastReset || 0));
+                if (remoteState.mode) setMaintenanceMode(remoteState.mode);
+                if (remoteState.manualTotalHours !== undefined) setManualTotalHours(String(remoteState.manualTotalHours ?? 0));
+                return;
+            }
+            if (event.type === 'maintenance.logs.updated') {
+                if (event.action === 'add' && event.item) {
+                    setLogs((prev) => [event.item, ...prev.filter((item) => String(item.id) !== String(event.item.id))].slice(0, 80));
+                    return;
+                }
+                if (event.action === 'clear') {
+                    setLogs([]);
+                    return;
+                }
+                getMaintenanceLogs(100).then((items) => {
+                    if (Array.isArray(items)) setLogs(items);
+                }).catch(() => {});
+                return;
+            }
+            if (event.type === 'maintenance.checklist.updated') {
+                if (Array.isArray(event.items)) {
+                    const safeItems = DEFAULT_CHECKLIST.map((item) => {
+                        const found = event.items.find((saved) => saved.id === item.id || saved.checklistKey === item.id);
+                        return { ...item, done: Boolean(found?.done) };
+                    });
+                    setChecklist(safeItems);
+                    return;
+                }
+                getMaintenanceChecklist().then((items) => {
+                    if (!Array.isArray(items)) return;
+                    const safeItems = DEFAULT_CHECKLIST.map((item) => {
+                        const found = items.find((saved) => saved.id === item.id || saved.checklistKey === item.id);
+                        return { ...item, done: Boolean(found?.done) };
+                    });
+                    setChecklist(safeItems);
+                }).catch(() => {});
+                return;
+            }
+            if (event.type === 'mesh.updated') {
+                if (event.action === 'upsert' && event.item) {
+                    setBedMeshHistory((prev) => [event.item, ...prev.filter((item) => String(item.id) !== String(event.item.id))].slice(0, 20));
+                    return;
+                }
+                if (event.action === 'clear') {
+                    setBedMeshHistory([]);
+                    return;
+                }
+                getMeshHistory(20).then((items) => {
+                    if (Array.isArray(items)) setBedMeshHistory(items);
+                }).catch(() => {});
+            }
+        });
+        return () => unsubscribe();
     }, []);
 
     const handleSaveAll = () => {
@@ -203,6 +326,21 @@ const MaintenancePage = () => {
         window.dispatchEvent(new Event('storage'));
         setShowSaved(true);
         appendLog('설정 저장', `필라멘트:${filamentName || '미지정'} / 모드:${maintenanceMode}`);
+        putMaintenanceState({
+            nozzleLastReset,
+            greaseLastReset,
+            mode: maintenanceMode,
+            manualTotalHours: clampNumber(manualTotalHours, 0),
+            filamentName,
+            filamentTotalLength: clampNumber(filamentTotalLength, 1000),
+            filamentUsedLength: clampNumber(filamentUsedLength, 0),
+            filamentMode
+        }).catch(() => {
+            // offline/local fallback mode
+        });
+        putMaintenanceChecklist(checklist).catch(() => {
+            // offline/local fallback mode
+        });
         setTimeout(() => setShowSaved(false), 1600);
     };
 
@@ -251,6 +389,9 @@ const MaintenancePage = () => {
         setChecklist((prev) => {
             const next = prev.map((item) => item.id === id ? { ...item, done: !item.done } : item);
             localStorage.setItem(MAINTENANCE_CHECKLIST_KEY, JSON.stringify(next));
+            putMaintenanceChecklist(next).catch(() => {
+                // offline/local fallback mode
+            });
             const selected = next.find((item) => item.id === id);
             if (selected) {
                 appendLog(selected.done ? '체크리스트 완료' : '체크리스트 해제', selected.label);
@@ -263,6 +404,9 @@ const MaintenancePage = () => {
         const next = DEFAULT_CHECKLIST.map((item) => ({ ...item, done: false }));
         setChecklist(next);
         localStorage.setItem(MAINTENANCE_CHECKLIST_KEY, JSON.stringify(next));
+        putMaintenanceChecklist(next).catch(() => {
+            // offline/local fallback mode
+        });
         appendLog('체크리스트 초기화', '모든 항목 미완료 처리');
     };
 
@@ -309,6 +453,9 @@ const MaintenancePage = () => {
         if (!ok) return;
         setLogs([]);
         localStorage.setItem(MAINTENANCE_LOG_KEY, JSON.stringify([]));
+        clearMaintenanceLogsRemote().catch(() => {
+            // offline/local fallback mode
+        });
     };
 
     const clearBedMeshHistory = () => {
@@ -317,6 +464,9 @@ const MaintenancePage = () => {
         setBedMeshHistory([]);
         localStorage.setItem(BED_MESH_HISTORY_KEY, JSON.stringify([]));
         appendLog('레벨링 이력 삭제', '저장된 베드 메쉬 결과 비움');
+        clearMeshHistoryRemote().catch(() => {
+            // offline/local fallback mode
+        });
     };
 
     const headerMutedText = isDark ? 'text-slate-400' : 'text-slate-600';

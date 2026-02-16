@@ -12,6 +12,7 @@ import CollapsibleSection from '../components/CollapsibleSection';
 import BedMeshSurfaceChart from '../components/BedMeshSurfaceChart';
 import { sendPrintCompleteNotification } from '../utils/notificationManager';
 import { savePrintReport } from '../utils/reportManager';
+import { createMeshHistory } from '../utils/centralApi';
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
@@ -47,7 +48,7 @@ const HomePage = () => {
     const CONSOLE_HISTORY_KEY = 'home-console-history-v1';
     const BED_MESH_HISTORY_KEY = 'bed-mesh-history-v1';
     const { theme } = useTheme();
-    const { settings } = useSettings();
+    const { settings, updateSettings } = useSettings();
     const [time, setTime] = useState(new Date());
     const dashboard = useKlipperDashboardData({
         enabled: true,
@@ -71,6 +72,9 @@ const HomePage = () => {
     const [consoleCommand, setConsoleCommand] = useState('');
     const [consoleStatus, setConsoleStatus] = useState({ type: '', text: '' });
     const [consoleHistory, setConsoleHistory] = useState(() => {
+        if (Array.isArray(settings.homeConsoleHistory)) {
+            return settings.homeConsoleHistory.slice(0, 12);
+        }
         try {
             const raw = localStorage.getItem(CONSOLE_HISTORY_KEY);
             const parsed = raw ? JSON.parse(raw) : [];
@@ -121,6 +125,17 @@ const HomePage = () => {
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+
+    useEffect(() => {
+        if (!Array.isArray(settings.homeConsoleHistory)) return;
+        const safeHistory = settings.homeConsoleHistory.slice(0, 12);
+        setConsoleHistory(safeHistory);
+        try {
+            localStorage.setItem(CONSOLE_HISTORY_KEY, JSON.stringify(safeHistory));
+        } catch {
+            // ignore local fallback write failure
+        }
+    }, [settings.homeConsoleHistory, CONSOLE_HISTORY_KEY]);
 
     const [, setFilamentData] = useState({ totalLength: 1000, usedLength: 0, name: '' });
 
@@ -548,11 +563,12 @@ const HomePage = () => {
         setConsoleHistory((prev) => {
             const next = [entry, ...prev].slice(0, 12);
             localStorage.setItem(CONSOLE_HISTORY_KEY, JSON.stringify(next));
+            updateSettings({ homeConsoleHistory: next });
             return next;
         });
-    }, [CONSOLE_HISTORY_KEY]);
+    }, [CONSOLE_HISTORY_KEY, updateSettings]);
 
-    const saveBedMeshHistory = useCallback((matrix) => {
+    const saveBedMeshHistory = useCallback(async (matrix) => {
         if (!Array.isArray(matrix) || matrix.length === 0) return;
         try {
             const rows = matrix.length;
@@ -589,6 +605,7 @@ const HomePage = () => {
             const next = [record, ...history].slice(0, 20);
             localStorage.setItem(BED_MESH_HISTORY_KEY, JSON.stringify(next));
             window.dispatchEvent(new Event('storage'));
+            await createMeshHistory(record);
         } catch {
             // ignore storage failures
         }
@@ -765,7 +782,7 @@ const HomePage = () => {
             const rows = Array.isArray(matrix) ? matrix.length : 0;
             const cols = rows > 0 ? matrix[0].length : 0;
             if (rows > 0 && cols > 0) {
-                saveBedMeshHistory(matrix);
+                await saveBedMeshHistory(matrix);
             }
             setMeshResultModal({
                 open: true,

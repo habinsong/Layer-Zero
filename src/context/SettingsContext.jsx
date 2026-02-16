@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { encryptText, decryptText } from '../utils/secureStorage';
 import { APP_ENV } from '../config/env';
+import { getServerSettings, putServerSettings, subscribeServerEvents } from '../utils/centralApi';
 
 const AI_FREE_API_KEY_STORAGE = 'ai-free-api-key';
 const AI_PAID_API_KEY_STORAGE = 'ai-paid-api-key';
@@ -161,6 +162,60 @@ export const SettingsProvider = ({ children }) => {
         loadEncryptedApiKeys();
     }, []);
 
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const remote = await getServerSettings();
+                if (!remote || cancelled) return;
+                setSettings((prev) => {
+                    const merged = { ...prev, ...remote };
+                    Object.keys(merged).forEach((key) => {
+                        if (key === 'aiFreeApiKey' || key === 'aiPaidApiKey') return;
+                        if (key in STORAGE_KEYS) writeSettingValue(key, merged[key]);
+                    });
+                    return merged;
+                });
+            } catch {
+                // 서버 미연결 시 localStorage fallback 유지
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    useEffect(() => {
+        const unsubscribe = subscribeServerEvents((event) => {
+            if (!event || event.type !== 'settings.updated') return;
+            if (event.data && typeof event.data === 'object') {
+                setSettings((prev) => {
+                    const merged = { ...prev, ...event.data };
+                    Object.keys(merged).forEach((key) => {
+                        if (key === 'aiFreeApiKey' || key === 'aiPaidApiKey') return;
+                        if (key in STORAGE_KEYS) writeSettingValue(key, merged[key]);
+                    });
+                    return merged;
+                });
+                return;
+            }
+            getServerSettings()
+                .then((remote) => {
+                    if (!remote) return;
+                    setSettings((prev) => {
+                        const merged = { ...prev, ...remote };
+                        Object.keys(merged).forEach((key) => {
+                            if (key === 'aiFreeApiKey' || key === 'aiPaidApiKey') return;
+                            if (key in STORAGE_KEYS) writeSettingValue(key, merged[key]);
+                        });
+                        return merged;
+                    });
+                })
+                .catch(() => {
+                    // offline/local fallback mode
+                });
+        });
+        return () => unsubscribe();
+    }, []);
+
     const updateSettings = (newSettings) => {
         setSettings((prev) => {
             const updated = { ...prev, ...newSettings };
@@ -198,6 +253,10 @@ export const SettingsProvider = ({ children }) => {
                 }
             }
 
+            putServerSettings(updated).catch(() => {
+                // offline/local fallback mode
+            });
+
             return updated;
         });
     };
@@ -215,6 +274,9 @@ export const SettingsProvider = ({ children }) => {
         localStorage.removeItem(AI_PAID_API_KEY_STORAGE);
 
         setSettings(resetValue);
+        putServerSettings(resetValue).catch(() => {
+            // offline/local fallback mode
+        });
     };
 
     return (

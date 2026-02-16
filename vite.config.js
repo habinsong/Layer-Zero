@@ -6,6 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const devProxyTarget = env.VITE_DEV_PROXY_TARGET || 'http://127.0.0.1:7125'
+  const appApiTarget = env.VITE_APP_API_TARGET || 'http://127.0.0.1:8787'
 
   return {
     plugins: [
@@ -55,6 +56,10 @@ export default defineConfig(({ mode }) => {
     ],
     server: {
       proxy: {
+        '/lzapi': {
+          target: appApiTarget,
+          changeOrigin: true
+        },
         '/api': {
           target: devProxyTarget,
           changeOrigin: true,

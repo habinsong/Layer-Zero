@@ -25,7 +25,7 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 import { cn } from '../lib/utils';
-import { requestNotificationPermission, getNotificationPermission } from '../utils/notificationManager';
+import { requestNotificationPermission, getNotificationPermission, getNotificationSupportInfo } from '../utils/notificationManager';
 
 const PROFILE_KEY = 'layer-zero-connection-profiles-v1';
 const VALID_ROTATIONS = [0, 90, 180, 270];
@@ -95,7 +95,11 @@ const SettingsPage = () => {
     const [formState, setFormState] = useState(settings);
     const [showSaved, setShowSaved] = useState(false);
     const [notificationPermission, setNotificationPermission] = useState('default');
+    const [notificationHint, setNotificationHint] = useState('');
     const [connectionProfiles, setConnectionProfiles] = useState(() => {
+        if (Array.isArray(settings.connectionProfiles)) {
+            return settings.connectionProfiles.slice(0, 10);
+        }
         try {
             const raw = localStorage.getItem(PROFILE_KEY);
             const parsed = raw ? JSON.parse(raw) : [];
@@ -120,8 +124,32 @@ const SettingsPage = () => {
     }, [settings]);
 
     useEffect(() => {
-        setNotificationPermission(getNotificationPermission());
-    }, []);
+        if (!Array.isArray(settings.connectionProfiles)) return;
+        const safeProfiles = settings.connectionProfiles.slice(0, 10);
+        setConnectionProfiles(safeProfiles);
+        try {
+            localStorage.setItem(PROFILE_KEY, JSON.stringify(safeProfiles));
+        } catch {
+            // ignore local fallback write failure
+        }
+    }, [settings.connectionProfiles]);
+
+    useEffect(() => {
+        const fromBrowser = getNotificationPermission();
+        const fromServer = settings.notificationPermission;
+        const next = typeof fromServer === 'string' ? fromServer : fromBrowser;
+        setNotificationPermission(next);
+        const support = getNotificationSupportInfo();
+        if (!support.supported) {
+            setNotificationHint('현재 브라우저는 Notification API를 지원하지 않습니다.');
+        } else if (!support.secure) {
+            setNotificationHint('권한 요청은 HTTPS 또는 localhost 환경에서만 동작합니다.');
+        } else if (support.permission === 'denied') {
+            setNotificationHint('브라우저 설정에서 알림 차단이 되어 있습니다. 사이트 권한을 허용으로 바꿔주세요.');
+        } else {
+            setNotificationHint('');
+        }
+    }, [settings.notificationPermission]);
 
     useEffect(() => {
         if (skipNextWeatherSearchRef.current) {
@@ -249,13 +277,33 @@ const SettingsPage = () => {
     };
 
     const handleRequestNotification = async () => {
-        const granted = await requestNotificationPermission();
-        setNotificationPermission(granted ? 'granted' : 'denied');
+        const result = await requestNotificationPermission();
+        const permission = result?.permission || (result?.granted ? 'granted' : 'denied');
+        setNotificationPermission(permission);
+        updateSettings({ notificationPermission: permission });
+        if (permission === 'granted') {
+            setNotificationHint('알림 권한이 허용되었습니다.');
+            return;
+        }
+        if (result?.reason === 'unsupported') {
+            setNotificationHint('현재 브라우저는 Notification API를 지원하지 않습니다.');
+            return;
+        }
+        if (result?.reason === 'insecure-context') {
+            setNotificationHint('HTTPS 또는 localhost에서 다시 시도해주세요.');
+            return;
+        }
+        if (result?.reason?.startsWith('request-error:')) {
+            setNotificationHint(`권한 요청 중 오류: ${result.reason.replace('request-error:', '')}`);
+            return;
+        }
+        setNotificationHint('권한이 거부되었거나 브라우저에서 요청이 차단되었습니다.');
     };
 
     const persistProfiles = (profiles) => {
         setConnectionProfiles(profiles);
         localStorage.setItem(PROFILE_KEY, JSON.stringify(profiles));
+        updateSettings({ connectionProfiles: profiles });
     };
 
     const saveCurrentAsProfile = () => {
@@ -632,6 +680,9 @@ const SettingsPage = () => {
                                 <div>
                                     <p className="font-bold">브라우저 권한</p>
                                     <p className="text-xs text-slate-500">현재: {notificationPermission}</p>
+                                    {notificationHint && (
+                                        <p className="text-[11px] text-amber-500 mt-1.5">{notificationHint}</p>
+                                    )}
                                 </div>
                                 {notificationPermission !== 'granted' && (
                                     <button onClick={handleRequestNotification} className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold">권한 요청</button>

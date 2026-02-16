@@ -1,6 +1,8 @@
 // Notification Manager - 브라우저 알림 관리
 // Phase 1: Quick Actions - Browser Notifications
 
+import { putServerSettings } from './centralApi';
+
 const NOTIFICATION_ICON = '/icon-192.png';
 
 const isBrowserNotificationSupported = () => {
@@ -8,23 +10,63 @@ const isBrowserNotificationSupported = () => {
     return "Notification" in window;
 };
 
+export const getNotificationSupportInfo = () => {
+    if (typeof window === 'undefined') {
+        return { supported: false, secure: false, permission: 'default', reason: 'server' };
+    }
+    const supported = isBrowserNotificationSupported();
+    const secure = Boolean(window.isSecureContext);
+    const permission = supported ? window.Notification.permission : 'denied';
+
+    let reason = '';
+    if (!supported) reason = 'unsupported';
+    else if (!secure) reason = 'insecure-context';
+    else if (permission === 'denied') reason = 'blocked';
+
+    return { supported, secure, permission, reason };
+};
+
 /**
  * 브라우저 알림 권한 요청
  * @returns {Promise<boolean>} 권한이 승인되면 true
  */
 export const requestNotificationPermission = async () => {
-    if (!isBrowserNotificationSupported()) {
+    const info = getNotificationSupportInfo();
+    if (!info.supported) {
         console.warn('이 브라우저는 알림을 지원하지 않습니다.');
-        return false;
+        return { granted: false, permission: 'denied', reason: 'unsupported' };
+    }
+
+    if (!info.secure) {
+        console.warn('알림 권한은 보안 컨텍스트(HTTPS/localhost)에서만 요청할 수 있습니다.');
+        return { granted: false, permission: info.permission, reason: 'insecure-context' };
     }
 
     if (window.Notification.permission === 'granted') {
-        return true;
+        putServerSettings({ notificationPermission: 'granted' }).catch(() => {
+            // offline/local fallback mode
+        });
+        return { granted: true, permission: 'granted', reason: 'already-granted' };
     }
 
-    const permission = await window.Notification.requestPermission();
-    localStorage.setItem('notification-permission', permission);
-    return permission === "granted";
+    try {
+        const permission = await window.Notification.requestPermission();
+        localStorage.setItem('notification-permission', permission);
+        putServerSettings({ notificationPermission: permission }).catch(() => {
+            // offline/local fallback mode
+        });
+        return {
+            granted: permission === "granted",
+            permission,
+            reason: permission === 'granted' ? 'ok' : 'blocked-or-dismissed'
+        };
+    } catch (error) {
+        return {
+            granted: false,
+            permission: window.Notification.permission || 'default',
+            reason: `request-error:${error?.message || 'unknown'}`
+        };
+    }
 };
 
 const showBrowserNotification = async (title, options) => {
