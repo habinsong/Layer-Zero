@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { encryptText, decryptText } from '../utils/secureStorage';
 import { APP_ENV } from '../config/env';
 import { getServerSettings, putServerSettings, subscribeServerEvents } from '../utils/centralApi';
@@ -7,6 +7,7 @@ const AI_FREE_API_KEY_STORAGE = 'ai-free-api-key';
 const AI_PAID_API_KEY_STORAGE = 'ai-paid-api-key';
 const AI_FREE_API_KEY_ENC_STORAGE = 'ai-free-api-key-enc';
 const AI_PAID_API_KEY_ENC_STORAGE = 'ai-paid-api-key-enc';
+const SECRET_SETTING_KEYS = new Set(['aiFreeApiKey', 'aiPaidApiKey']);
 
 const DEFAULT_SETTINGS = {
     printerName: APP_ENV.defaultPrinterName || 'KP3S PRO',
@@ -19,8 +20,8 @@ const DEFAULT_SETTINGS = {
     filamentCostPerKg: 18000,
     electricityCostPerKwh: 200,
     wakelockEnabled: false,
-    aiFreeApiKey: APP_ENV.defaultAiFreeApiKey || '',
-    aiPaidApiKey: APP_ENV.defaultAiPaidApiKey || '',
+    aiFreeApiKey: '',
+    aiPaidApiKey: '',
     dashboardPollMs: 5000,
     dashboardStatsPollMs: 60000,
     notifyPrintComplete: true,
@@ -92,6 +93,23 @@ function writeSettingValue(settingKey, value) {
     const storageKey = STORAGE_KEYS[settingKey];
     if (!storageKey) return;
     localStorage.setItem(storageKey, String(value));
+}
+
+function sanitizeRemoteSettings(input) {
+    if (!input || typeof input !== 'object') return null;
+    const next = { ...input };
+    SECRET_SETTING_KEYS.forEach((key) => {
+        if (key in next) delete next[key];
+    });
+    return next;
+}
+
+function persistSafeSettingsSnapshot(snapshot) {
+    if (!snapshot || typeof snapshot !== 'object') return;
+    Object.keys(snapshot).forEach((key) => {
+        if (SECRET_SETTING_KEYS.has(key)) return;
+        if (key in STORAGE_KEYS) writeSettingValue(key, snapshot[key]);
+    });
 }
 
 export const SettingsProvider = ({ children }) => {
@@ -168,12 +186,11 @@ export const SettingsProvider = ({ children }) => {
             try {
                 const remote = await getServerSettings();
                 if (!remote || cancelled) return;
+                const safeRemote = sanitizeRemoteSettings(remote);
+                if (!safeRemote) return;
                 setSettings((prev) => {
-                    const merged = { ...prev, ...remote };
-                    Object.keys(merged).forEach((key) => {
-                        if (key === 'aiFreeApiKey' || key === 'aiPaidApiKey') return;
-                        if (key in STORAGE_KEYS) writeSettingValue(key, merged[key]);
-                    });
+                    const merged = { ...prev, ...safeRemote };
+                    persistSafeSettingsSnapshot(merged);
                     return merged;
                 });
             } catch {
@@ -187,25 +204,22 @@ export const SettingsProvider = ({ children }) => {
         const unsubscribe = subscribeServerEvents((event) => {
             if (!event || event.type !== 'settings.updated') return;
             if (event.data && typeof event.data === 'object') {
+                const safeRemote = sanitizeRemoteSettings(event.data);
+                if (!safeRemote) return;
                 setSettings((prev) => {
-                    const merged = { ...prev, ...event.data };
-                    Object.keys(merged).forEach((key) => {
-                        if (key === 'aiFreeApiKey' || key === 'aiPaidApiKey') return;
-                        if (key in STORAGE_KEYS) writeSettingValue(key, merged[key]);
-                    });
+                    const merged = { ...prev, ...safeRemote };
+                    persistSafeSettingsSnapshot(merged);
                     return merged;
                 });
                 return;
             }
             getServerSettings()
                 .then((remote) => {
-                    if (!remote) return;
+                    const safeRemote = sanitizeRemoteSettings(remote);
+                    if (!safeRemote) return;
                     setSettings((prev) => {
-                        const merged = { ...prev, ...remote };
-                        Object.keys(merged).forEach((key) => {
-                            if (key === 'aiFreeApiKey' || key === 'aiPaidApiKey') return;
-                            if (key in STORAGE_KEYS) writeSettingValue(key, merged[key]);
-                        });
+                        const merged = { ...prev, ...safeRemote };
+                        persistSafeSettingsSnapshot(merged);
                         return merged;
                     });
                 })
@@ -216,12 +230,12 @@ export const SettingsProvider = ({ children }) => {
         return () => unsubscribe();
     }, []);
 
-    const updateSettings = (newSettings) => {
+    const updateSettings = useCallback((newSettings) => {
         setSettings((prev) => {
             const updated = { ...prev, ...newSettings };
 
             Object.keys(newSettings).forEach((key) => {
-                if (key === 'aiFreeApiKey' || key === 'aiPaidApiKey') return;
+                if (SECRET_SETTING_KEYS.has(key)) return;
                 writeSettingValue(key, updated[key]);
             });
 
@@ -253,15 +267,15 @@ export const SettingsProvider = ({ children }) => {
                 }
             }
 
-            putServerSettings(updated).catch(() => {
+            putServerSettings(sanitizeRemoteSettings(updated) || {}).catch(() => {
                 // offline/local fallback mode
             });
 
             return updated;
         });
-    };
+    }, []);
 
-    const resetSettings = () => {
+    const resetSettings = useCallback(() => {
         const resetValue = { ...DEFAULT_SETTINGS };
 
         Object.keys(STORAGE_KEYS).forEach((key) => {
@@ -274,13 +288,20 @@ export const SettingsProvider = ({ children }) => {
         localStorage.removeItem(AI_PAID_API_KEY_STORAGE);
 
         setSettings(resetValue);
-        putServerSettings(resetValue).catch(() => {
+        putServerSettings(sanitizeRemoteSettings(resetValue) || {}).catch(() => {
             // offline/local fallback mode
         });
-    };
+    }, []);
+
+    const contextValue = useMemo(() => ({
+        settings,
+        updateSettings,
+        resetSettings,
+        defaultSettings: DEFAULT_SETTINGS
+    }), [settings, updateSettings, resetSettings]);
 
     return (
-        <SettingsContext.Provider value={{ settings, updateSettings, resetSettings, defaultSettings: DEFAULT_SETTINGS }}>
+        <SettingsContext.Provider value={contextValue}>
             {children}
         </SettingsContext.Provider>
     );

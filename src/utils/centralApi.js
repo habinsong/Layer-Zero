@@ -1,11 +1,31 @@
 import { APP_ENV } from '../config/env';
 
 const API_BASE = (APP_ENV.appApiBase || '/lzapi').replace(/\/$/, '');
+const API_TOKEN = String(APP_ENV.appApiToken || '').trim();
+
+function buildHeaders(extraHeaders = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...extraHeaders
+  };
+
+  if (API_TOKEN) {
+    headers['X-Layer-Zero-Token'] = API_TOKEN;
+  }
+
+  return headers;
+}
+
+function withAuthQuery(url) {
+  if (!API_TOKEN) return url;
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}token=${encodeURIComponent(API_TOKEN)}`;
+}
 
 async function request(path, options = {}) {
   const url = `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
   const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    headers: buildHeaders(options.headers || {}),
     ...options
   });
   if (!res.ok) {
@@ -109,7 +129,7 @@ export function subscribeServerEvents(onEvent) {
   if (typeof window === 'undefined' || typeof window.EventSource === 'undefined') {
     return () => {};
   }
-  const source = new EventSource(`${API_BASE}/events`);
+  const source = new EventSource(withAuthQuery(`${API_BASE}/events`));
   source.onmessage = (event) => {
     try {
       const payload = JSON.parse(event.data);

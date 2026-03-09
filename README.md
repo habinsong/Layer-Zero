@@ -312,8 +312,11 @@ npm run dev
 | `VITE_DEV_PROXY_TARGET` | `http://172.30.1.83:7125` | 개발 중 `/api` 프록시 대상 |
 | `VITE_APP_API_BASE` | `/lzapi` | 중앙 API base path |
 | `VITE_APP_API_TARGET` | `http://127.0.0.1:8787` | 개발 중 `/lzapi` 프록시 대상 |
-| `VITE_DEFAULT_AI_FREE_API_KEY` | `(빈값)` | 무료 모드 API 키 |
-| `VITE_DEFAULT_AI_PAID_API_KEY` | `(빈값)` | 유료 모드 API 키 |
+| `VITE_APP_API_TOKEN` | `(빈값)` | 중앙 API 보호 토큰. `LZ_API_TOKEN`과 동일하게 맞춰 사용 |
+| `VITE_DEV_HOST` | `127.0.0.1` | 개발 서버 바인딩 호스트. 외부 접속이 필요할 때만 변경 |
+| `LZ_API_HOST` | `127.0.0.1` | 중앙 API 바인딩 호스트. 기본은 로컬 전용 |
+| `LZ_API_TOKEN` | `(빈값)` | 중앙 API 인증 토큰. 외부 바인딩 시 설정 권장 |
+| `LZ_ALLOWED_ORIGINS` | `http://192.168.0.10:5173` | 추가 허용 Origin 목록(쉼표 구분) |
 
 ---
 

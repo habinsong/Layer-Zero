@@ -1,16 +1,16 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './layouts/Layout';
-import Home from './pages/Home';
-import PrinterView from './pages/PrinterView';
-import ModelSites from './pages/ModelSites';
-import Settings from './pages/Settings';
-import Webcam from './pages/Webcam';
-import Maintenance from './pages/Maintenance';
-import Tools from './pages/Tools';
-import Reports from './pages/Reports';
 
 import { SettingsProvider } from './context/SettingsContext';
+const Home = lazy(() => import('./pages/Home'));
+const PrinterView = lazy(() => import('./pages/PrinterView'));
+const ModelSites = lazy(() => import('./pages/ModelSites'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Webcam = lazy(() => import('./pages/Webcam'));
+const Maintenance = lazy(() => import('./pages/Maintenance'));
+const Tools = lazy(() => import('./pages/Tools'));
+const Reports = lazy(() => import('./pages/Reports'));
 const AiChatbot = lazy(() => import('./pages/AiChatbot'));
 
 function App() {
@@ -23,30 +23,25 @@ function App() {
   return (
     <SettingsProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Home />} />
-            <Route
-              path="printer"
-              element={<PrinterView />}
-            />
-            <Route path="webcam" element={<Webcam />} />
-            <Route
-              path="chatbot"
-              element={(
-                <Suspense fallback={RouteFallback}>
-                  <AiChatbot />
-                </Suspense>
-              )}
-            />
-            <Route path="models" element={<ModelSites />} />
-            <Route path="maintenance" element={<Maintenance />} />
-            <Route path="tools" element={<Tools />} />
-            <Route path="reports" element={<Reports />} />
-            <Route path="settings" element={<Settings />} />
-            {/* <Route path="*" element={<Navigate to="/" replace />} /> */}
-          </Route>
-        </Routes>
+        <Suspense fallback={RouteFallback}>
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Home />} />
+              <Route
+                path="printer"
+                element={<PrinterView />}
+              />
+              <Route path="webcam" element={<Webcam />} />
+              <Route path="chatbot" element={<AiChatbot />} />
+              <Route path="models" element={<ModelSites />} />
+              <Route path="maintenance" element={<Maintenance />} />
+              <Route path="tools" element={<Tools />} />
+              <Route path="reports" element={<Reports />} />
+              <Route path="settings" element={<Settings />} />
+              {/* <Route path="*" element={<Navigate to="/" replace />} /> */}
+            </Route>
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </SettingsProvider>
   );

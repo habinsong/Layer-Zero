@@ -124,7 +124,7 @@ const ThreeDResources = () => {
         }
     }, [settings.modelSiteFavorites]);
 
-    const currentSites = sites[activeTab] || [];
+    const currentSites = useMemo(() => sites[activeTab] || [], [activeTab]);
 
     const tabFavoritesCount = useMemo(
         () => currentSites.filter((site) => favorites.includes(site.url)).length,

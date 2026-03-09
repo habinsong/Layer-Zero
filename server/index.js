@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -8,7 +9,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = Number(process.env.LZ_API_PORT || 8787);
+const HOST = String(process.env.LZ_API_HOST || '127.0.0.1').trim() || '127.0.0.1';
+const API_TOKEN = String(process.env.LZ_API_TOKEN || '').trim();
+const ALLOWED_ORIGINS = new Set(
+  String(process.env.LZ_ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+);
 const STORE_PATH = path.join(__dirname, 'data', 'store.json');
+const LOOPBACK_ORIGIN_RE = /^https?:\/\/(localhost|127(?:\.\d{1,3}){3}|\[::1\])(?::\d+)?$/i;
+const SECRET_SETTING_KEYS = new Set(['aiFreeApiKey', 'aiPaidApiKey']);
 
 const DEFAULT_STORE = {
   meta: {
@@ -46,14 +57,34 @@ function ensureStoreFile() {
   }
 }
 
-function readStore() {
-  ensureStoreFile();
-  try {
-    const raw = fs.readFileSync(STORE_PATH, 'utf8');
-    const parsed = JSON.parse(raw);
-    return {
+function sanitizeSettings(settings) {
+  if (!isPlainObject(settings)) {
+    return { settings: settings ?? null, changed: false };
+  }
+
+  const next = { ...settings };
+  let changed = false;
+
+  SECRET_SETTING_KEYS.forEach((key) => {
+    if (key in next) {
+      delete next[key];
+      changed = true;
+    }
+  });
+
+  return { settings: changed ? next : settings, changed };
+}
+
+function normalizeStore(rawStore) {
+  const parsed = isPlainObject(rawStore) ? rawStore : {};
+  const { settings, changed: settingsChanged } = sanitizeSettings(parsed.settings);
+
+  return {
+    changed: settingsChanged || settings !== (parsed.settings ?? null),
+    store: {
       ...DEFAULT_STORE,
       ...parsed,
+      settings,
       meta: {
         ...DEFAULT_STORE.meta,
         ...(parsed.meta || {}),
@@ -74,18 +105,34 @@ function readStore() {
         ...DEFAULT_STORE.chat,
         ...(parsed.chat || {})
       }
-    };
+    }
+  };
+}
+
+function readStore() {
+  ensureStoreFile();
+  try {
+    const raw = fs.readFileSync(STORE_PATH, 'utf8');
+    const parsed = JSON.parse(raw);
+    const normalized = normalizeStore(parsed);
+    if (normalized.changed) {
+      writeStore(normalized.store);
+    }
+    return normalized.store;
   } catch {
     return structuredClone(DEFAULT_STORE);
   }
 }
 
 function writeStore(store) {
-  store.meta = store.meta || { revision: 1, updatedAt: null, resources: {} };
-  if (!Number.isFinite(Number(store.meta.revision)) || Number(store.meta.revision) < 1) {
-    store.meta.revision = 1;
+  const normalized = normalizeStore(store).store;
+  normalized.meta = normalized.meta || { revision: 1, updatedAt: null, resources: {} };
+  if (!Number.isFinite(Number(normalized.meta.revision)) || Number(normalized.meta.revision) < 1) {
+    normalized.meta.revision = 1;
   }
-  fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2), 'utf8');
+  const tmpPath = `${STORE_PATH}.tmp`;
+  fs.writeFileSync(tmpPath, JSON.stringify(normalized, null, 2), 'utf8');
+  fs.renameSync(tmpPath, STORE_PATH);
 }
 
 function asArray(value) {
@@ -111,6 +158,31 @@ function deepMerge(base, patch) {
     }
   });
   return merged;
+}
+
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  return LOOPBACK_ORIGIN_RE.test(origin) || ALLOWED_ORIGINS.has(origin);
+}
+
+function getRequestToken(req) {
+  const authHeader = String(req.get('authorization') || '').trim();
+  if (authHeader.toLowerCase().startsWith('bearer ')) {
+    return authHeader.slice(7).trim();
+  }
+
+  const headerToken = String(req.get('x-layer-zero-token') || '').trim();
+  if (headerToken) return headerToken;
+
+  return typeof req.query?.token === 'string' ? req.query.token.trim() : '';
+}
+
+function safeTokenEquals(a, b) {
+  if (!a || !b) return false;
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  if (left.length !== right.length) return false;
+  return crypto.timingSafeEqual(left, right);
 }
 
 const eventClients = new Set();
@@ -152,11 +224,50 @@ function touchStore(store, resource) {
 }
 
 const app = express();
-app.use(cors());
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+  next();
+});
+app.use(cors({
+  origin(origin, callback) {
+    callback(null, isAllowedOrigin(origin));
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+}));
 app.use(express.json({ limit: '5mb' }));
+app.use((err, _req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ ok: false, error: 'invalid_json' });
+  }
+  return next(err);
+});
 
 app.get('/lzapi/health', (_req, res) => {
   res.json({ ok: true, service: 'layer-zero-central-storage', time: new Date().toISOString() });
+});
+
+app.use('/lzapi', (req, res, next) => {
+  if (req.path === '/health' || req.method === 'OPTIONS') {
+    return next();
+  }
+
+  const origin = req.get('origin');
+  if (!isAllowedOrigin(origin)) {
+    return res.status(403).json({ ok: false, error: 'origin_not_allowed' });
+  }
+
+  if (!API_TOKEN) {
+    return next();
+  }
+
+  if (!safeTokenEquals(API_TOKEN, getRequestToken(req))) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' });
+  }
+
+  return next();
 });
 
 app.get('/lzapi/events', (req, res) => {
@@ -192,7 +303,8 @@ app.get('/lzapi/settings', (_req, res) => {
 
 app.put('/lzapi/settings', (req, res) => {
   const store = readStore();
-  store.settings = deepMerge(store.settings || {}, req.body || {});
+  const { settings: incomingSettings } = sanitizeSettings(req.body || {});
+  store.settings = deepMerge(store.settings || {}, incomingSettings || {});
   store.settings.updatedAt = new Date().toISOString();
   const touched = touchStore(store, 'settings');
   writeStore(store);
@@ -395,8 +507,11 @@ app.delete('/lzapi/chat/messages', (_req, res) => {
   res.json({ ok: true });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, HOST, () => {
   ensureStoreFile();
-  console.log(`[layer-zero-api] listening on http://0.0.0.0:${PORT}`);
+  console.log(`[layer-zero-api] listening on http://${HOST}:${PORT}`);
   console.log(`[layer-zero-api] store: ${STORE_PATH}`);
+  if (HOST !== '127.0.0.1' && HOST !== 'localhost' && !API_TOKEN) {
+    console.warn('[layer-zero-api] 외부 바인딩이 활성화되었지만 LZ_API_TOKEN이 설정되지 않았습니다.');
+  }
 });

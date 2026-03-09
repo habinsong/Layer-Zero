@@ -158,21 +158,16 @@ const AiChatbot = () => {
             return normalizeUsageData(fromServer);
         }
         const storedData = localStorage.getItem('ai_chatbot_usage_v2');
-        console.log('[AI Chatbot INIT] localStorage 초기 로드:', storedData);
-
         if (storedData) {
             try {
                 const parsed = JSON.parse(storedData);
                 const normalized = normalizeUsageData(parsed);
-                console.log('[AI Chatbot INIT] 정규화된 데이터:', normalized);
                 return normalized;
             } catch (e) {
                 console.error('[AI Chatbot INIT] Failed to parse usage data:', e);
             }
         }
 
-        // localStorage에 데이터가 없으면 초기값 사용
-        console.log('[AI Chatbot INIT] localStorage 비어있음, 초기값 사용');
         return {
             date: new Date().toLocaleDateString(),
             dailyRequests: 0,
@@ -203,7 +198,6 @@ const AiChatbot = () => {
 
     // Save to localStorage whenever usageData changes
     useEffect(() => {
-        console.log('[AI Chatbot] localStorage 저장:', usageData);
         localStorage.setItem('ai_chatbot_usage_v2', JSON.stringify(usageData));
     }, [usageData]);
 
@@ -212,7 +206,7 @@ const AiChatbot = () => {
             updateSettings({ aiUsageData: usageData });
         }, 400);
         return () => clearTimeout(timer);
-    }, [usageData]);
+    }, [usageData, updateSettings]);
 
     // Save chat history to localStorage
     useEffect(() => {
@@ -309,7 +303,7 @@ const AiChatbot = () => {
             updateSettings({ aiMobileFontScale: mobileFontScale });
         }, 350);
         return () => clearTimeout(timer);
-    }, [mobileFontScale]);
+    }, [mobileFontScale, updateSettings]);
 
     useEffect(() => {
         localStorage.setItem(PAID_MODEL_STORAGE_KEY, paidModel);
@@ -320,7 +314,7 @@ const AiChatbot = () => {
             updateSettings({ aiPaidModel: paidModel });
         }, 350);
         return () => clearTimeout(timer);
-    }, [paidModel]);
+    }, [paidModel, updateSettings]);
 
     const handleMessagesScroll = (e) => {
         setIsHeaderCollapsed(e.currentTarget.scrollTop > 20);
@@ -561,8 +555,6 @@ const AiChatbot = () => {
             }
 
             const estimatedCost = (inputTokens / 1000000 * COST_PER_1M_INPUT_TOKENS) + (outputTokens / 1000000 * COST_PER_1M_OUTPUT_TOKENS);
-
-            console.log(`[토큰 사용량] 입력: ${inputTokens}, 출력: ${outputTokens}, 비용: $${estimatedCost.toFixed(6)}`);
 
             setUsageData(prev => ({
                 ...prev,

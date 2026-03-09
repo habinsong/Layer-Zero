@@ -62,7 +62,6 @@ const desktopShots = [
 ];
 
 for (const shot of desktopShots) {
-  // eslint-disable-next-line no-console
   console.log(`[capture] desktop ${shot.file}`);
   await captureDesktop(page, shot.route, shot.file, shot);
 }
@@ -76,7 +75,6 @@ const mobileShots = [
 ];
 
 for (const shot of mobileShots) {
-  // eslint-disable-next-line no-console
   console.log(`[capture] mobile ${shot.file}`);
   await captureMobile(browser, shot.route, shot.file, shot);
 }
@@ -84,5 +82,4 @@ for (const shot of mobileShots) {
 await context.close();
 await browser.close();
 
-// eslint-disable-next-line no-console
 console.log(`done: ${outDir}`);

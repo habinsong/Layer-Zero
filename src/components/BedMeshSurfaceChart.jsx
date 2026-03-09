@@ -24,6 +24,18 @@ const SURFACE_COLORSCALE = [
     [0.76, '#fb923c'],
     [1, '#dc2626']
 ];
+const EMPTY_PREPARED = {
+    normalized: [[0, 0], [0, 0]],
+    rows: 2,
+    cols: 2,
+    min: 0,
+    max: 0,
+    cLimit: 0.02,
+    x: [1, 2],
+    y: [1, 2],
+    flatPlane: [[0, 0], [0, 0]],
+    path: [{ x: 1, y: 1, z: 0, order: 1 }, { x: 2, y: 2, z: 0, order: 2 }]
+};
 
 const BedMeshSurfaceChartComponent = ({ matrix, isDark = false, className = '', title = '평탄도 3D 뷰', chartHeight = 360 }) => {
     const [cameraState, setCameraState] = useState({
@@ -71,16 +83,8 @@ const BedMeshSurfaceChartComponent = ({ matrix, isDark = false, className = '', 
         return { normalized, rows, cols, min, max, cLimit, x, y, flatPlane, path };
     }, [matrix]);
 
-    const normalized = prepared?.normalized ?? [[0, 0], [0, 0]];
-    const rows = prepared?.rows ?? 2;
-    const cols = prepared?.cols ?? 2;
-    const min = prepared?.min ?? 0;
-    const max = prepared?.max ?? 0;
-    const cLimit = prepared?.cLimit ?? 0.02;
-    const x = prepared?.x ?? [1, 2];
-    const y = prepared?.y ?? [1, 2];
-    const flatPlane = prepared?.flatPlane ?? [[0, 0], [0, 0]];
-    const path = prepared?.path ?? [{ x: 1, y: 1, z: 0, order: 1 }, { x: 2, y: 2, z: 0, order: 2 }];
+    const chartModel = prepared || EMPTY_PREPARED;
+    const { normalized, rows, cols, min, max, cLimit, x, y, flatPlane, path } = chartModel;
     const height = Math.max(240, Number(chartHeight) || 360);
 
     const pathLift = Math.max(cLimit * 0.04, 0.003);
@@ -184,7 +188,7 @@ const BedMeshSurfaceChartComponent = ({ matrix, isDark = false, className = '', 
             showlegend: false
         }
         ];
-    }, [prepared, cLimit, endPoint.x, endPoint.y, flatPlane, isDark, normalized, pathLift, pathText, pathX, pathY, pathZ, startPoint.x, startPoint.y, x, y]);
+    }, [prepared, cLimit, endPoint.x, endPoint.y, endPoint.z, flatPlane, isDark, normalized, pathLift, pathText, pathX, pathY, pathZ, startPoint.x, startPoint.y, startPoint.z, x, y]);
 
     const layout = useMemo(() => ({
         margin: { l: 8, r: 8, t: 8, b: 8 },

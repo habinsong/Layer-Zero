@@ -462,6 +462,8 @@ export function useKlipperDashboardData(options = {}) {
         statsIntervalMs = 30000,
         costConfig = {}
     } = options;
+    const electricityCostPerKwh = Number(costConfig.electricityCostPerKwh) || 200;
+    const filamentCostPerKg = Number(costConfig.filamentCostPerKg) || 18000;
 
     const isVisible = usePageVisibility();
     const currentFilenameRef = useRef('');
@@ -571,7 +573,10 @@ export function useKlipperDashboardData(options = {}) {
                 }
             }
 
-            const nextProgress = buildProgressFromStatus(statusData, thumbnail, costConfig);
+            const nextProgress = buildProgressFromStatus(statusData, thumbnail, {
+                electricityCostPerKwh,
+                filamentCostPerKg
+            });
             const mappedAlerts = buildAlertsFromStatus(statusData, serverWarningsRef.current);
             const quality = calculateQualityScore({
                 status: statusData,
@@ -726,7 +731,7 @@ export function useKlipperDashboardData(options = {}) {
             clearInterval(polling);
             clearInterval(statsPolling);
         };
-    }, [enabled, isVisible, pollIntervalMs, statsIntervalMs, costConfig.electricityCostPerKwh, costConfig.filamentCostPerKg]);
+    }, [enabled, isVisible, pollIntervalMs, statsIntervalMs, electricityCostPerKwh, filamentCostPerKg]);
 
     return data;
 }
@@ -736,6 +741,8 @@ export function useKlipperDashboardData(options = {}) {
  */
 export function useKlipperPrintProgress(options = {}) {
     const { enabled = true, intervalMs = 3000, costConfig = {} } = options;
+    const electricityCostPerKwh = Number(costConfig.electricityCostPerKwh) || 200;
+    const filamentCostPerKg = Number(costConfig.filamentCostPerKg) || 18000;
     const isVisible = usePageVisibility();
 
     const [progress, setProgress] = useState({
@@ -791,7 +798,10 @@ export function useKlipperPrintProgress(options = {}) {
                 previousTimeLeft: prevTimeLeftRef.current
             });
             prevTimeLeftRef.current = stableTimeLeft;
-            const next = buildProgressFromStatus(status, thumbnail, costConfig);
+            const next = buildProgressFromStatus(status, thumbnail, {
+                electricityCostPerKwh,
+                filamentCostPerKg
+            });
             setProgress({
                 ...next,
                 timeLeft: stableTimeLeft,
@@ -838,7 +848,7 @@ export function useKlipperPrintProgress(options = {}) {
             unsubscribeRealtime?.();
             clearInterval(interval);
         };
-    }, [enabled, intervalMs, isVisible, costConfig.electricityCostPerKwh, costConfig.filamentCostPerKg]);
+    }, [enabled, intervalMs, isVisible, electricityCostPerKwh, filamentCostPerKg]);
 
     return progress;
 }

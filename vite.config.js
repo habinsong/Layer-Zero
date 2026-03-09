@@ -7,6 +7,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const devProxyTarget = env.VITE_DEV_PROXY_TARGET || 'http://127.0.0.1:7125'
   const appApiTarget = env.VITE_APP_API_TARGET || 'http://127.0.0.1:8787'
+  const devHost = env.VITE_DEV_HOST || '127.0.0.1'
 
   return {
     plugins: [
@@ -38,6 +39,7 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+          globIgnores: ['**/plotly-vendor-*.js'],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/api\.openweathermap\.org\/.*/i,
@@ -54,6 +56,35 @@ export default defineConfig(({ mode }) => {
         }
       })
     ],
+    build: {
+      chunkSizeWarningLimit: 5500,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return
+            if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) {
+              return 'react-vendor'
+            }
+            if (id.includes('plotly')) {
+              return 'plotly-vendor'
+            }
+            if (id.includes('recharts')) {
+              return 'chart-vendor'
+            }
+            if (id.includes('react-markdown') || id.includes('remark-gfm')) {
+              return 'markdown-vendor'
+            }
+            if (id.includes('@google/generative-ai')) {
+              return 'ai-vendor'
+            }
+            if (id.includes('lucide-react')) {
+              return 'icon-vendor'
+            }
+            return 'vendor'
+          }
+        }
+      }
+    },
     server: {
       proxy: {
         '/lzapi': {
@@ -67,7 +98,7 @@ export default defineConfig(({ mode }) => {
           rewrite: (path) => path.replace(/^\/api/, '')
         }
       },
-      host: true // 외부 접속 허용 (0.0.0.0)
+      host: devHost
     }
   }
 })

@@ -6,6 +6,14 @@ const MOONRAKER_BASE_URL = '/api';
 const DEFAULT_MOONRAKER_PORT = '7125';
 const FALLBACK_KLIPPER_IP = APP_ENV.moonrakerFallbackIp || '';
 
+function shouldPreferProxyMoonraker() {
+    if (typeof window === 'undefined') return false;
+    const host = window.location.hostname;
+    const port = window.location.port;
+    const isLocalHost = host === '127.0.0.1' || host === 'localhost';
+    return isLocalHost && (port === '5173' || port === '4173');
+}
+
 function normalizeMoonrakerBase(rawValue) {
     if (!rawValue) return null;
     let value = String(rawValue).trim();
@@ -33,6 +41,11 @@ function normalizeMoonrakerBase(rawValue) {
 }
 
 function getMoonrakerCandidates() {
+    const preferProxy = shouldPreferProxyMoonraker();
+    if (preferProxy) {
+        return [MOONRAKER_BASE_URL];
+    }
+
     const candidates = [];
     if (typeof window !== 'undefined') {
         const savedIp = localStorage.getItem('klipper-ip');
@@ -44,7 +57,9 @@ function getMoonrakerCandidates() {
             if (fallbackBase) candidates.push(fallbackBase);
         }
     }
+
     candidates.push(MOONRAKER_BASE_URL);
+
     return [...new Set(candidates)];
 }
 
@@ -92,7 +107,6 @@ async function uploadMoonraker(endpoint, formData) {
         }
     }
 
-    console.error(`Moonraker Upload Error [POST ${endpoint}]:`, lastError);
     return { success: false, error: lastError?.message || 'Unknown error' };
 }
 
@@ -132,7 +146,6 @@ async function fetchMoonraker(endpoint, method = 'GET', body = null) {
         }
     }
 
-    console.error(`Moonraker API Error [${method} ${endpoint}]:`, lastError);
     return { success: false, error: lastError?.message || 'Unknown error' };
 }
 
@@ -157,7 +170,6 @@ async function fetchMoonrakerText(endpoint, headers = {}) {
         }
     }
 
-    console.error(`Moonraker Text API Error [GET ${endpoint}]:`, lastError);
     return { success: false, error: lastError?.message || 'Unknown error' };
 }
 

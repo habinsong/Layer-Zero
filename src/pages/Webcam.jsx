@@ -131,7 +131,8 @@ const Webcam = () => {
         denoise,
         contrast,
         brightness,
-        saturate
+        saturate,
+        updateSettings
     ]);
 
     useEffect(() => {
@@ -150,7 +151,7 @@ const Webcam = () => {
         setImgSrc(`${normalized}?t=${Date.now()}`);
     }, [baseUrl]);
 
-    const handleImageLoad = (e) => {
+    const handleImageLoad = useCallback((e) => {
         const imageEl = e.currentTarget;
         setImageSize({
             width: imageEl.naturalWidth || 0,
@@ -182,7 +183,7 @@ const Webcam = () => {
 
         setLoading(false);
         setHasError(false);
-    };
+    }, [enhanceEnabled, upscale]);
 
     const handleImageError = () => {
         setImageSize({ width: 0, height: 0 });
@@ -264,7 +265,7 @@ const Webcam = () => {
         const imageEl = imageRef.current;
         if (!imageEl || !imageEl.complete || !imageEl.naturalWidth) return;
         handleImageLoad({ currentTarget: imageEl });
-    }, [enhanceEnabled, upscale, denoise, contrast, brightness, saturate]);
+    }, [enhanceEnabled, upscale, denoise, contrast, brightness, saturate, handleImageLoad]);
 
     return (
         <div className="w-full animate-fade-in flex flex-col gap-3 md:gap-4">

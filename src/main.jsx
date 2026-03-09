@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { clearLayerZeroLocalData } from './utils/appStorage'
 
 // Simple Error Boundary Fallback
 class ErrorBoundary extends React.Component {
@@ -31,12 +32,12 @@ class ErrorBoundary extends React.Component {
           </pre>
           <button
             onClick={() => {
-              localStorage.clear();
+              clearLayerZeroLocalData();
               window.location.reload();
             }}
             className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition"
           >
-            Clear Cache & Reload
+            앱 데이터 초기화 후 새로고침
           </button>
         </div>
       );

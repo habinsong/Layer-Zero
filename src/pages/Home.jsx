@@ -65,7 +65,7 @@ const HomePage = () => {
     const realtime = dashboard.realtime || { connected: false, mode: 'polling' };
     const quality = dashboard.quality || { score: 0, level: 'warmingup', reasons: ['준비 중'], started: false };
     const extraStatus = dashboard.extraStatus;
-    const alerts = dashboard.alerts || [];
+    const alerts = useMemo(() => dashboard.alerts || [], [dashboard.alerts]);
     const weather = useWeather();
 
     const [isEmergencyConfirm, setIsEmergencyConfirm] = useState(false);
@@ -105,6 +105,7 @@ const HomePage = () => {
             { key: 'home', label: 'G28 홈 이동', status: 'pending' },
             { key: 'probe', label: 'BED_MESH_CALIBRATE 측정', status: 'pending' },
             { key: 'fetch', label: '메쉬 결과 수집', status: 'pending' },
+            { key: 'profile', label: 'BED_MESH_PROFILE SAVE=default', status: 'pending' },
             { key: 'save', label: 'SAVE_CONFIG 저장', status: 'pending' }
         ]
     });
@@ -141,6 +142,11 @@ const HomePage = () => {
     const [, setFilamentData] = useState({ totalLength: 1000, usedLength: 0, name: '' });
 
     useEffect(() => {
+        if (!printerStatus.isOnline) {
+            setMacros([]);
+            return;
+        }
+
         async function fetchMacros() {
             const result = await getGcodeMacroList();
             if (result.success) {
@@ -156,7 +162,7 @@ const HomePage = () => {
             }
         }
         fetchMacros();
-    }, []);
+    }, [printerStatus.isOnline]);
 
     useEffect(() => {
         const data = JSON.parse(localStorage.getItem('filament-spool') || '{}');
@@ -494,7 +500,7 @@ const HomePage = () => {
         } finally {
             setControlLoading(false);
         }
-    }, [printerStatus.state, isEmergencyConfirm]);
+    }, [isEmergencyConfirm]);
 
     const handlePauseResume = useCallback(async () => {
         if (printerStatus.state === 'complete' || (printProgress.progress >= 1 && printerStatus.state !== 'printing')) {
@@ -768,7 +774,7 @@ const HomePage = () => {
     }, [extractMatrixFromBedMesh]);
 
     const handleAutoBedMeshLevel = useCallback(async () => {
-        const ok = confirm('자동 레벨링을 시작할까요?\n순서: 베드 50°C 가열 -> G28 -> BED_MESH_CALIBRATE -> SAVE_CONFIG\n(SAVE_CONFIG 실행 시 Klipper가 재시작될 수 있습니다)');
+        const ok = confirm('자동 레벨링을 시작할까요?\n순서: 베드 50°C 가열 -> G28 -> BED_MESH_CALIBRATE -> BED_MESH_PROFILE SAVE=default -> SAVE_CONFIG\n(SAVE_CONFIG 실행 시 Klipper가 재시작될 수 있습니다)');
         if (!ok) return;
 
         setControlLoading(true);
@@ -777,12 +783,13 @@ const HomePage = () => {
             visible: true,
             running: true,
             currentStep: 0,
-            message: '1/5 단계: 베드 가열 중 (50°C)',
+            message: '1/6 단계: 베드 가열 중 (50°C)',
             steps: [
                 { key: 'heat', label: '베드 50°C 가열', status: 'running' },
                 { key: 'home', label: 'G28 홈 이동', status: 'pending' },
                 { key: 'probe', label: 'BED_MESH_CALIBRATE 측정', status: 'pending' },
                 { key: 'fetch', label: '메쉬 결과 수집', status: 'pending' },
+                { key: 'profile', label: 'BED_MESH_PROFILE SAVE=default', status: 'pending' },
                 { key: 'save', label: 'SAVE_CONFIG 저장', status: 'pending' }
             ]
         });
@@ -798,7 +805,7 @@ const HomePage = () => {
             setLevelingProgress((prev) => ({
                 ...prev,
                 currentStep: 1,
-                message: '2/5 단계: 홈 이동 실행 중',
+                message: '2/6 단계: 홈 이동 실행 중',
                 steps: prev.steps.map((step, idx) => (
                     idx === 0 ? { ...step, status: 'done' } : idx === 1 ? { ...step, status: 'running' } : step
                 ))
@@ -807,7 +814,7 @@ const HomePage = () => {
             setLevelingProgress((prev) => ({
                 ...prev,
                 currentStep: 2,
-                message: '3/5 단계: 베드 메쉬 측정 중',
+                message: '3/6 단계: 베드 메쉬 측정 중',
                 steps: prev.steps.map((step, idx) => (
                     idx === 1 ? { ...step, status: 'done' } : idx === 2 ? { ...step, status: 'running' } : step
                 ))
@@ -819,7 +826,7 @@ const HomePage = () => {
             setLevelingProgress((prev) => ({
                 ...prev,
                 currentStep: 3,
-                message: '4/5 단계: 측정 결과 읽는 중',
+                message: '4/6 단계: 측정 결과 읽는 중',
                 steps: prev.steps.map((step, idx) => (
                     idx === 2 ? { ...step, status: 'done' } : idx === 3 ? { ...step, status: 'running' } : step
                 ))
@@ -829,9 +836,20 @@ const HomePage = () => {
             setLevelingProgress((prev) => ({
                 ...prev,
                 currentStep: 4,
-                message: '5/5 단계: 설정 저장 중',
+                message: '5/6 단계: 메쉬 프로파일 저장 중',
                 steps: prev.steps.map((step, idx) => (
                     idx === 3 ? { ...step, status: 'done' } : idx === 4 ? { ...step, status: 'running' } : step
+                ))
+            }));
+            const profileSaveResult = await sendGcode('BED_MESH_PROFILE SAVE=default');
+            if (!profileSaveResult.success) throw new Error(profileSaveResult.error || 'BED_MESH_PROFILE SAVE 실패');
+
+            setLevelingProgress((prev) => ({
+                ...prev,
+                currentStep: 5,
+                message: '6/6 단계: 설정 저장 중',
+                steps: prev.steps.map((step, idx) => (
+                    idx === 4 ? { ...step, status: 'done' } : idx === 5 ? { ...step, status: 'running' } : step
                 ))
             }));
             const saveResult = await sendGcode('SAVE_CONFIG');
@@ -855,13 +873,13 @@ const HomePage = () => {
             setLevelingProgress((prev) => ({
                 ...prev,
                 running: false,
-                currentStep: 4,
+                currentStep: 5,
                 message: '자동 레벨링 완료',
                 steps: prev.steps.map((step) => ({ ...step, status: 'done' }))
             }));
             appendConsoleHistory({
                 id: `${Date.now()}-${Math.random()}`,
-                command: 'Bed 50C > G28 > BED_MESH_CALIBRATE > SAVE_CONFIG',
+                command: 'Bed 50C > G28 > BED_MESH_CALIBRATE > BED_MESH_PROFILE SAVE=default > SAVE_CONFIG',
                 timestamp: new Date().toLocaleTimeString('ko-KR', { hour12: false }),
                 success: true
             });
@@ -1329,7 +1347,18 @@ const HomePage = () => {
                     <CollapsibleSection title="제어 센터" icon={Zap} defaultOpen={true} className="h-full flex flex-col">
                         <div className="space-y-6">
                             {/* 차트 컴포넌트가 자체 높이를 가지므로 부모에서 높이 제한 제거 + 하단 여백 확보 */}
-                            <div className="w-full mb-8"><TemperatureChart /></div>
+                            <div className="w-full mb-8">
+                                {printerStatus.isOnline ? (
+                                    <TemperatureChart />
+                                ) : (
+                                    <div className={cn(
+                                        "w-full rounded-xl border px-4 py-10 text-center",
+                                        theme === 'dark' ? "border-slate-800 bg-slate-900/50 text-slate-400" : "border-slate-200 bg-white text-slate-500"
+                                    )}>
+                                        프린터 연결 후 온도 그래프를 표시합니다.
+                                    </div>
+                                )}
+                            </div>
                             <hr className={cn("border-t", theme === 'dark' ? "border-slate-800" : "border-slate-100")} />
                             <div className="grid grid-cols-4 gap-3 mt-4">
                                 <button onClick={() => handleQuickActionCommand({ label: 'G28 (홈)', script: 'G28', confirm: true })} disabled={controlLoading} className={cn("p-2 md:p-4 rounded-xl font-black text-white transition-all relative overflow-hidden group flex flex-col items-center justify-center gap-1 md:gap-2", "bg-gradient-to-br from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700", controlLoading && "opacity-50")}><HomeIcon className="w-5 h-5 md:w-8 md:h-8" /><span className="text-[10px] md:text-sm whitespace-nowrap">G28 (홈)</span></button>
@@ -1481,7 +1510,16 @@ const HomePage = () => {
                         className="h-full flex flex-col [&>div:last-child]:flex-1 [&>div:last-child]:h-full [&>div:last-child]:min-h-0 [&>div:last-child]:p-0"
                     >
                         {/* FileManager가 부모 전체를 차지하도록 설정 */}
-                        <FileManager className="w-full h-full min-h-0" />
+                        {printerStatus.isOnline ? (
+                            <FileManager className="w-full h-full min-h-0" />
+                        ) : (
+                            <div className={cn(
+                                "flex-1 flex items-center justify-center px-4 py-10 text-center text-sm",
+                                theme === 'dark' ? "text-slate-400" : "text-slate-500"
+                            )}>
+                                프린터 연결 후 G-code 파일 목록을 불러옵니다.
+                            </div>
+                        )}
                     </CollapsibleSection>
                 </div>
             </div>
