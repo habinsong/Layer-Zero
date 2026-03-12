@@ -88,7 +88,7 @@ Layer Zero는 이 흐름을 하나의 운영 루프로 통합합니다.
     </tr>
     <tr>
       <td><strong>AI 챗봇</strong></td>
-      <td>Free/Paid 모드, Flash/Pro 선택, 대화 유지/요약/재생성</td>
+      <td>Free/Paid 모드, Flash/Flash Lite/Pro 3.1 선택, 대화 유지/요약/재생성</td>
       <td>현장 트러블슈팅 속도 향상</td>
     </tr>
     <tr>
@@ -299,11 +299,12 @@ npm run dev
 
 > 실제 배포/공개 저장소에서는 API 키를 비워두고, 각 사용자 환경에서만 입력하세요.
 > AI API 키는 서버에 저장하지 않으며, 각 브라우저의 로컬 설정에서만 유지됩니다.
+> 지원 모델: Free는 `gemini-3-flash-preview`, `gemini-3.1-flash-lite-preview`, Paid는 여기에 `gemini-3.1-pro-preview`가 추가됩니다.
 
 | 변수 | 예시 | 설명 |
 |---|---|---|
 | `VITE_DEFAULT_PRINTER_NAME` | `KP3S PRO` | UI 기본 프린터 이름 |
-| `VITE_DEFAULT_KLIPPER_IP` | `172.30.1.83:8888` | Moonraker 기본 주소 |
+| `VITE_DEFAULT_KLIPPER_IP` | `172.30.1.83:8888` | 기본 장비 주소. `:8888` 입력 시 내부적으로 Moonraker `:7125`로 보정 |
 | `VITE_DEFAULT_WEBCAM_URL` | `http://172.30.1.72/capture_flash` | 웹캠 1 URL |
 | `VITE_DEFAULT_WEBCAM_URL2` | `http://172.30.1.93/capture_flash` | 웹캠 2 URL |
 | `VITE_DEFAULT_WEATHER_CITY` | `서울시` | 기본 도시명 |

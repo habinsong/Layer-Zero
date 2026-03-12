@@ -25,6 +25,7 @@ const APP_STORAGE_KEYS = [
     'ai-paid-api-key-enc',
     'ai_chatbot_messages_v1',
     'ai_chatbot_mobile_font_scale_v1',
+    'ai_chatbot_free_model_v1',
     'ai_chatbot_paid_model_v1',
     'ai_chatbot_usage_v2',
     'home-console-history-v1',
@@ -48,4 +49,3 @@ export function clearLayerZeroLocalData() {
         localStorage.removeItem(key);
     });
 }
-

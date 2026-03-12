@@ -69,6 +69,7 @@ Layer Zero는 로컬 단독 저장에서 확장해 다음 구조로 동작합니
 ## 5. 데이터 일관성
 
 - settings 저장은 deep merge
+- `aiFreeApiKey`, `aiPaidApiKey`는 settings 저장 대상에서 제외
 - 변경 시 `meta.revision` 증가
 - append 리소스는 최신순/개수 제한 저장
 - 프론트는 payload patch 반영 우선
@@ -84,6 +85,7 @@ Layer Zero는 로컬 단독 저장에서 확장해 다음 구조로 동작합니
 
 - `.env`, `.env.local`, `.env.*` Git 추적 제외
 - `server/data/store.json` Git 추적 제외
+- AI API 키는 브라우저 로컬에만 암호화 저장하고 중앙 저장소에는 저장하지 않음
 - API 키 유출 이력 발생 시 키 폐기/재발급
 
 ## 8. 운영 권장

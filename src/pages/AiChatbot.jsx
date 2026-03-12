@@ -20,9 +20,16 @@ const FREE_TIER_DAILY_REQUESTS = 100; // Conservative limit for preview model
 const FREE_TIER_RPM = 5; // Requests Per Minute - matching actual API limit
 const CHAT_HISTORY_STORAGE_KEY = 'ai_chatbot_messages_v1';
 const MOBILE_FONT_SCALE_STORAGE_KEY = 'ai_chatbot_mobile_font_scale_v1';
+const FREE_MODEL_STORAGE_KEY = 'ai_chatbot_free_model_v1';
 const PAID_MODEL_STORAGE_KEY = 'ai_chatbot_paid_model_v1';
 const DEFAULT_MODEL = 'gemini-3-flash-preview';
-const PAID_MODEL_OPTIONS = ['gemini-3-flash-preview', 'gemini-3-pro-preview'];
+const FREE_MODEL_OPTIONS = ['gemini-3-flash-preview', 'gemini-3.1-flash-lite-preview'];
+const PAID_MODEL_OPTIONS = ['gemini-3-flash-preview', 'gemini-3.1-flash-lite-preview', 'gemini-3.1-pro-preview'];
+const MODEL_LABELS = {
+    'gemini-3-flash-preview': 'Flash',
+    'gemini-3.1-flash-lite-preview': 'Flash Lite',
+    'gemini-3.1-pro-preview': 'Pro 3.1'
+};
 const INITIAL_ASSISTANT_MESSAGE = {
     role: 'model',
     text: '안녕하세요! 저는 3D 프린팅 전문가 AI입니다.\n트러블슈팅, 소재, 부품, 출력 품질 등 무엇이든 물어보세요.'
@@ -138,6 +145,12 @@ const AiChatbot = () => {
         return window.innerWidth < 768 ? 0.95 : 1; // 모바일 기본은 약간 작게, PC는 기본 크기
     });
     const [isLatestCopied, setIsLatestCopied] = useState(false);
+    const [freeModel, setFreeModel] = useState(() => {
+        const fromServer = settings.aiFreeModel;
+        if (FREE_MODEL_OPTIONS.includes(fromServer)) return fromServer;
+        const saved = localStorage.getItem(FREE_MODEL_STORAGE_KEY);
+        return FREE_MODEL_OPTIONS.includes(saved) ? saved : DEFAULT_MODEL;
+    });
     const [paidModel, setPaidModel] = useState(() => {
         const fromServer = settings.aiPaidModel;
         if (PAID_MODEL_OPTIONS.includes(fromServer)) return fromServer;
@@ -191,10 +204,13 @@ const AiChatbot = () => {
         if ([0.9, 0.95, 1].includes(Number(settings.aiMobileFontScale))) {
             setMobileFontScale(Number(settings.aiMobileFontScale));
         }
+        if (FREE_MODEL_OPTIONS.includes(settings.aiFreeModel)) {
+            setFreeModel(settings.aiFreeModel);
+        }
         if (PAID_MODEL_OPTIONS.includes(settings.aiPaidModel)) {
             setPaidModel(settings.aiPaidModel);
         }
-    }, [settings.aiUsageData, settings.aiMobileFontScale, settings.aiPaidModel]);
+    }, [settings.aiUsageData, settings.aiMobileFontScale, settings.aiFreeModel, settings.aiPaidModel]);
 
     // Save to localStorage whenever usageData changes
     useEffect(() => {
@@ -306,6 +322,17 @@ const AiChatbot = () => {
     }, [mobileFontScale, updateSettings]);
 
     useEffect(() => {
+        localStorage.setItem(FREE_MODEL_STORAGE_KEY, freeModel);
+    }, [freeModel]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            updateSettings({ aiFreeModel: freeModel });
+        }, 350);
+        return () => clearTimeout(timer);
+    }, [freeModel, updateSettings]);
+
+    useEffect(() => {
         localStorage.setItem(PAID_MODEL_STORAGE_KEY, paidModel);
     }, [paidModel]);
 
@@ -320,6 +347,8 @@ const AiChatbot = () => {
         setIsHeaderCollapsed(e.currentTarget.scrollTop > 20);
     };
     const isCompactMobileUI = isMobile && isHeaderCollapsed;
+    const selectedModel = mode === 'paid' ? paidModel : freeModel;
+    const selectedModelOptions = mode === 'paid' ? PAID_MODEL_OPTIONS : FREE_MODEL_OPTIONS;
 
     const scrollToTop = () => {
         if (messagesContainerRef.current) {
@@ -471,7 +500,6 @@ const AiChatbot = () => {
 
 
             const genAI = new GoogleGenerativeAI(apiKey);
-            const selectedModel = mode === 'paid' ? paidModel : DEFAULT_MODEL;
             const model = genAI.getGenerativeModel({
                 model: selectedModel,
                 systemInstruction: `# 🛠️ 3D 프린팅 전문 AI 솔루션 가이드
@@ -631,7 +659,7 @@ const AiChatbot = () => {
                             <h1 className={cn("text-xl font-bold truncate", theme === 'light' ? "text-slate-900" : "text-white")}>3D Printing AI Expert</h1>
                             <div className="flex items-center gap-2 text-xs text-slate-400">
                                 <Zap className="w-3 h-3 text-yellow-500" />
-                                <span className="truncate">Powered by {mode === 'paid' ? paidModel : DEFAULT_MODEL}</span>
+                                <span className="truncate">Powered by {selectedModel}</span>
                             </div>
                         </div>
                     </div>
@@ -682,35 +710,33 @@ const AiChatbot = () => {
                             </button>
                         </div>
 
-                        {mode === 'paid' && (
-                            <div className={cn(
-                                "flex p-1 rounded-lg border w-full",
-                                theme === 'light' ? "bg-slate-100 border-slate-200" : "bg-slate-800 border-slate-700"
-                            )}>
-                                <button
-                                    onClick={() => setPaidModel('gemini-3-flash-preview')}
-                                    className={cn(
-                                        "flex-1 px-3 py-1.5 rounded-md text-xs font-bold transition-all",
-                                        paidModel === 'gemini-3-flash-preview'
-                                            ? (theme === 'light' ? "bg-white text-slate-900 shadow-sm" : "bg-slate-700 text-white shadow-sm")
-                                            : (theme === 'light' ? "text-slate-500 hover:text-slate-900" : "text-slate-400 hover:text-slate-200")
-                                    )}
-                                >
-                                    Flash
-                                </button>
-                                <button
-                                    onClick={() => setPaidModel('gemini-3-pro-preview')}
-                                    className={cn(
-                                        "flex-1 px-3 py-1.5 rounded-md text-xs font-bold transition-all",
-                                        paidModel === 'gemini-3-pro-preview'
-                                            ? "bg-purple-600 text-white shadow-sm"
-                                            : (theme === 'light' ? "text-slate-500 hover:text-slate-900" : "text-slate-400 hover:text-slate-200")
-                                    )}
-                                >
-                                    Pro
-                                </button>
-                            </div>
-                        )}
+                        <div className={cn(
+                            "flex p-1 rounded-lg border w-full gap-1",
+                            theme === 'light' ? "bg-slate-100 border-slate-200" : "bg-slate-800 border-slate-700"
+                        )}>
+                            {selectedModelOptions.map((modelName) => {
+                                const isActive = selectedModel === modelName;
+                                const isProModel = modelName === 'gemini-3.1-pro-preview';
+
+                                return (
+                                    <button
+                                        key={modelName}
+                                        onClick={() => (mode === 'paid' ? setPaidModel(modelName) : setFreeModel(modelName))}
+                                        className={cn(
+                                            "flex-1 min-w-0 px-3 py-1.5 rounded-md text-xs font-bold transition-all",
+                                            isActive
+                                                ? (isProModel
+                                                    ? "bg-purple-600 text-white shadow-sm"
+                                                    : (theme === 'light' ? "bg-white text-slate-900 shadow-sm" : "bg-slate-700 text-white shadow-sm"))
+                                                : (theme === 'light' ? "text-slate-500 hover:text-slate-900" : "text-slate-400 hover:text-slate-200")
+                                        )}
+                                        title={modelName}
+                                    >
+                                        {MODEL_LABELS[modelName] || modelName}
+                                    </button>
+                                );
+                            })}
+                        </div>
 
                         <div className={cn(
                             "text-xs rounded-lg border px-3 py-1.5",

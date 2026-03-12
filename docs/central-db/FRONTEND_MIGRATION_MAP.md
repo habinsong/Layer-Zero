@@ -31,7 +31,8 @@
 포함 데이터:
 
 - 연결 정보, 폴링, 알림 옵션, UI 옵션
-- 프로필/즐겨찾기/콘솔히스토리/챗봇 사용량/웹캠 뷰 상태 등
+- 프로필/즐겨찾기/콘솔히스토리/챗봇 사용량/모델 선택/웹캠 뷰 상태 등
+- `aiFreeApiKey`, `aiPaidApiKey` 같은 민감값은 제외하고 동기화
 
 ## 2.2 Reports
 
@@ -74,6 +75,8 @@
 
 - `GET/PUT/DELETE /lzapi/chat/messages`
 - `chat.messages.updated` 이벤트로 즉시 반영
+- 모델 선택/사용량은 settings payload(`aiFreeModel`, `aiPaidModel`, `aiUsageData`)로 동기화
+- API 키는 브라우저 로컬 암호화 저장만 사용
 
 ## 2.5 Webcam / ModelSites / Layout
 
