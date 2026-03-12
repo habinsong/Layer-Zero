@@ -303,7 +303,7 @@ npm run dev
 | 변수 | 예시 | 설명 |
 |---|---|---|
 | `VITE_DEFAULT_PRINTER_NAME` | `KP3S PRO` | UI 기본 프린터 이름 |
-| `VITE_DEFAULT_KLIPPER_IP` | `172.30.1.83:7125` | Moonraker 기본 주소 |
+| `VITE_DEFAULT_KLIPPER_IP` | `172.30.1.83:8888` | Moonraker 기본 주소 |
 | `VITE_DEFAULT_WEBCAM_URL` | `http://172.30.1.72/capture_flash` | 웹캠 1 URL |
 | `VITE_DEFAULT_WEBCAM_URL2` | `http://172.30.1.93/capture_flash` | 웹캠 2 URL |
 | `VITE_DEFAULT_WEATHER_CITY` | `서울시` | 기본 도시명 |
