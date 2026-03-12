@@ -558,15 +558,15 @@ const MaintenancePage = () => {
     const titleText = isDark ? 'text-white' : 'text-slate-900';
 
     return (
-        <div className="w-full space-y-6 animate-fade-in px-3 md:px-4 pb-4">
+        <div className="page-shell">
             <header className={cn('premium-card', !isDark && 'shadow-sm')}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 md:gap-4">
-                        <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-rose-500 animate-glow-pulse">
+                    <div className="flex items-start gap-3 md:gap-4 min-w-0">
+                        <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-rose-500 animate-glow-pulse shrink-0">
                             <Wrench className="w-6 h-6 md:w-8 md:h-8 text-white" />
                         </div>
-                        <div>
-                            <h1 className="text-2xl md:text-4xl font-black gradient-primary gradient-text">유지보수 랩</h1>
+                        <div className="min-w-0">
+                            <h1 className="text-[1.75rem] md:text-4xl font-black gradient-primary gradient-text leading-tight">유지보수 랩</h1>
                             <p className={cn('text-sm md:text-base mt-1', headerMutedText)}>
                                 점검, 튜닝, 로그 관리를 한 화면에서 처리합니다.
                             </p>
@@ -575,14 +575,14 @@ const MaintenancePage = () => {
 
                     <button
                         onClick={handleSaveAll}
-                        className="px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white rounded-xl transition-all text-sm md:text-base font-black flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                        className="w-full sm:w-auto px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white rounded-xl transition-all text-sm md:text-base font-black flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
                     >
                         {showSaved ? '✓ 저장됨' : '설정 저장'}
                     </button>
                 </div>
             </header>
 
-            <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
+            <section className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
                 <div className="premium-card">
                     <div className="flex items-center gap-2 text-sm font-bold text-blue-400"><Gauge className="w-4 h-4" /> Health Score</div>
                     <div className={cn('mt-2 text-3xl font-black', healthScore >= 70 ? 'text-emerald-400' : healthScore >= 45 ? 'text-amber-400' : 'text-red-400')}>
@@ -613,7 +613,7 @@ const MaintenancePage = () => {
             </section>
 
             <section className="premium-card">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
                     <h3 className="text-xl font-black gradient-primary gradient-text flex items-center gap-2">
                         <History className="w-5 h-5" /> 베드 레벨링 이력
                     </h3>
@@ -642,7 +642,7 @@ const MaintenancePage = () => {
                             const avg = Number(item.avg);
                             return (
                                 <div key={item.id} className={cn('rounded-xl border p-3', isDark ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200')}>
-                                    <div className="flex items-center justify-between gap-2">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                                         <div className={cn('text-sm font-black', titleText)}>
                                             {rows > 0 && cols > 0 ? `${rows}x${cols} 메쉬` : '메쉬'}
                                         </div>
@@ -711,9 +711,9 @@ const MaintenancePage = () => {
                         <h3 className="text-xl font-black gradient-primary gradient-text">필라멘트 관리</h3>
                     </div>
 
-                    <div className={cn('p-3 rounded-xl mb-4 flex items-center justify-between border', isDark ? 'bg-slate-900/60 border-slate-700' : 'bg-slate-50 border-slate-200')}>
+                    <div className={cn('p-3 rounded-xl mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border', isDark ? 'bg-slate-900/60 border-slate-700' : 'bg-slate-50 border-slate-200')}>
                         <span className={cn('text-sm font-bold', headerMutedText)}>데이터 소스</span>
-                        <div className="flex items-center gap-2">
+                        <div className="grid w-full sm:w-auto grid-cols-2 gap-2">
                             <button
                                 onClick={() => setFilamentMode('auto')}
                                 className={cn(
@@ -822,9 +822,9 @@ const MaintenancePage = () => {
                         <h3 className="text-xl font-black gradient-primary gradient-text">유지보수 스케줄</h3>
                     </div>
 
-                    <div className={cn('p-3 rounded-xl mb-4 flex items-center justify-between border', isDark ? 'bg-slate-900/60 border-slate-700' : 'bg-slate-50 border-slate-200')}>
+                    <div className={cn('p-3 rounded-xl mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border', isDark ? 'bg-slate-900/60 border-slate-700' : 'bg-slate-50 border-slate-200')}>
                         <span className={cn('text-sm font-bold', headerMutedText)}>시간 계산 방식</span>
-                        <div className="flex items-center gap-2">
+                        <div className="grid w-full sm:w-auto grid-cols-2 gap-2">
                             <button
                                 onClick={() => setMaintenanceMode('auto')}
                                 className={cn(
@@ -931,16 +931,16 @@ const MaintenancePage = () => {
                     <div className="space-y-2.5">
                         {QUICK_COMMANDS.map((cmd) => (
                             <div key={cmd.id} className={cn('rounded-xl border p-3', isDark ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200')}>
-                                <div className="flex items-start justify-between gap-2">
+                                <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
                                     <div className="min-w-0">
                                         <p className={cn('font-bold text-sm', titleText)}>{cmd.title}</p>
                                         <p className={cn('text-xs mt-1', headerMutedText)}>{cmd.description}</p>
                                         <p className={cn('mt-2 text-[11px] font-mono break-all', isDark ? 'text-slate-400' : 'text-slate-600')}>{cmd.script}</p>
                                     </div>
-                                    <div className="flex items-center gap-1 shrink-0">
+                                    <div className="flex w-full sm:w-auto items-center gap-1 shrink-0">
                                         <button
                                             onClick={() => copyScript(cmd.script)}
-                                            className={cn('px-2.5 py-1.5 rounded-lg border text-xs font-bold inline-flex items-center gap-1', isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-800' : 'border-slate-300 text-slate-700 hover:bg-slate-100')}
+                                            className={cn('flex-1 sm:flex-none px-2.5 py-1.5 rounded-lg border text-xs font-bold inline-flex items-center justify-center gap-1', isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-800' : 'border-slate-300 text-slate-700 hover:bg-slate-100')}
                                         >
                                             {copiedScript === cmd.script ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                                             복사
@@ -948,7 +948,7 @@ const MaintenancePage = () => {
                                         <button
                                             onClick={() => runQuickCommand(cmd)}
                                             disabled={runningScript === cmd.script}
-                                            className={cn('px-2.5 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1 text-white', runningScript === cmd.script ? 'bg-slate-500 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500')}
+                                            className={cn('flex-1 sm:flex-none px-2.5 py-1.5 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1 text-white', runningScript === cmd.script ? 'bg-slate-500 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500')}
                                         >
                                             <Play className="w-3.5 h-3.5" />
                                             실행
@@ -1005,14 +1005,14 @@ const MaintenancePage = () => {
                     <h3 className="text-xl font-black gradient-primary gradient-text flex items-center gap-2">
                         <History className="w-5 h-5" /> 유지보수 로그
                     </h3>
-                    <div className="flex items-center gap-2">
-                        <div className={cn('flex items-center gap-2 rounded-lg border px-2.5 py-1.5', isDark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50')}>
+                    <div className="flex w-full md:w-auto flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <div className={cn('flex w-full items-center gap-2 rounded-lg border px-2.5 py-1.5', isDark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50')}>
                             <Plus className={cn('w-3.5 h-3.5', headerMutedText)} />
                             <input
                                 value={customLog}
                                 onChange={(e) => setCustomLog(e.target.value)}
                                 placeholder="직접 메모 추가"
-                                className={cn('bg-transparent text-xs outline-none w-40 md:w-56', isDark ? 'text-slate-100 placeholder:text-slate-500' : 'text-slate-800 placeholder:text-slate-400')}
+                                className={cn('bg-transparent text-xs outline-none w-full min-w-0 sm:w-40 md:w-56', isDark ? 'text-slate-100 placeholder:text-slate-500' : 'text-slate-800 placeholder:text-slate-400')}
                             />
                             <button
                                 onClick={addCustomLog}
@@ -1023,7 +1023,7 @@ const MaintenancePage = () => {
                         </div>
                         <button
                             onClick={clearLogs}
-                            className={cn('px-2.5 py-1.5 rounded-lg border text-xs font-bold inline-flex items-center gap-1', isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-800' : 'border-slate-300 text-slate-700 hover:bg-slate-100')}
+                            className={cn('w-full sm:w-auto px-2.5 py-1.5 rounded-lg border text-xs font-bold inline-flex items-center justify-center gap-1', isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-800' : 'border-slate-300 text-slate-700 hover:bg-slate-100')}
                         >
                             <Trash2 className="w-3.5 h-3.5" /> 비우기
                         </button>

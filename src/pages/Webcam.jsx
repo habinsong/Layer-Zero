@@ -268,9 +268,9 @@ const Webcam = () => {
     }, [enhanceEnabled, upscale, denoise, contrast, brightness, saturate, handleImageLoad]);
 
     return (
-        <div className="w-full animate-fade-in flex flex-col gap-3 md:gap-4">
+        <div className="page-shell flex flex-col">
             <div className="premium-card p-3 md:p-4 space-y-2.5">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                         <h1 className="text-xl md:text-3xl font-black gradient-text gradient-primary leading-tight">실시간 웹캠</h1>
                         <p className="text-[11px] md:text-sm text-slate-500 mt-0.5 tracking-wide">MANUAL SNAPSHOT MODE · CAM {activeCam}</p>
@@ -278,7 +278,7 @@ const Webcam = () => {
                     <button
                         onClick={toggleFullscreen}
                         className={cn(
-                            "px-3 py-2 rounded-xl flex items-center justify-center gap-2 transition-all text-xs md:text-sm border font-bold shrink-0",
+                            "px-3 py-2 rounded-xl flex items-center justify-center gap-2 transition-all text-xs md:text-sm border font-bold shrink-0 w-full sm:w-auto",
                             isDark
                                 ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700"
                                 : "bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300"
@@ -289,7 +289,7 @@ const Webcam = () => {
                     </button>
                 </div>
 
-                <div className={cn('grid grid-cols-3 gap-2', isDark ? '' : '')}>
+                <div className={cn('grid grid-cols-1 gap-2 sm:grid-cols-3', isDark ? '' : '')}>
                     <button
                         onClick={updateImageSource}
                         disabled={loading}
@@ -321,7 +321,7 @@ const Webcam = () => {
                 </div>
 
                 <div className={cn(
-                    'grid grid-cols-2 md:grid-cols-8 gap-1.5 p-1.5 rounded-xl border',
+                    'grid grid-cols-2 gap-1.5 p-1.5 rounded-xl border sm:grid-cols-4 md:grid-cols-8',
                     isDark ? 'bg-slate-900/40 border-slate-700/50' : 'bg-slate-50 border-slate-200'
                 )}>
                     <button
@@ -359,7 +359,7 @@ const Webcam = () => {
                     <button
                         onClick={() => setIsMirrored((prev) => !prev)}
                         className={cn(
-                            "px-2 py-2 rounded-lg text-xs font-bold transition-all md:col-span-2",
+                            "px-2 py-2 rounded-lg text-xs font-bold transition-all col-span-2 md:col-span-2",
                             isMirrored ? "bg-emerald-500 text-white" : (isDark ? "text-slate-300 hover:bg-slate-700/60" : "text-slate-700 hover:bg-slate-200")
                         )}
                     >
@@ -372,7 +372,7 @@ const Webcam = () => {
                         보정 세부 설정
                         <ChevronDown className="w-4 h-4" />
                     </summary>
-                    <div className="mt-2.5 grid grid-cols-2 md:grid-cols-5 gap-2">
+                    <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-5">
                         <label className={cn('px-2 py-1.5 rounded-lg border text-[11px]', isDark ? 'bg-slate-900/40 border-slate-700 text-slate-300' : 'bg-white border-slate-200 text-slate-600')}>
                             업스케일 {upscale.toFixed(1)}x
                             <input type="range" min="1" max="3" step="0.5" value={upscale} onChange={(e) => setUpscale(Number(e.target.value))} className="w-full mt-1" />
@@ -398,7 +398,7 @@ const Webcam = () => {
             </div>
 
             <div className="premium-card p-2 md:p-3">
-                <div className="w-full h-[60vh] min-h-[260px] max-h-[calc(100vh-260px)] flex items-center justify-center">
+                <div className="w-full h-[52vh] min-h-[260px] max-h-[calc(100vh-260px)] sm:h-[60vh] flex items-center justify-center">
                     <div
                         ref={containerRef}
                         className="bg-black rounded-xl overflow-hidden relative group h-full max-w-full"
@@ -415,10 +415,10 @@ const Webcam = () => {
                                 <Camera className="w-16 h-16 mb-4 opacity-20" />
                                 <p className="text-xl font-bold mb-2 text-slate-400">촬영 실패</p>
                                 <p className="text-sm text-slate-500 mb-4">선택한 웹캠(CAM {activeCam}) 연결 상태를 확인해주세요.</p>
-                                <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
-                                    <p className="text-xs font-mono text-cyan-400 break-all">{baseUrl}</p>
+                                    <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                                        <p className="text-xs font-mono text-cyan-400 break-all">{baseUrl}</p>
+                                    </div>
                                 </div>
-                            </div>
                         ) : (
                             <>
                                 {enhanceEnabled && (

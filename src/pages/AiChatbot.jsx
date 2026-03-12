@@ -637,7 +637,7 @@ const AiChatbot = () => {
 
     return (
         <div className={cn(
-            "h-full w-full min-w-0 flex flex-col gap-2 md:gap-4 overflow-x-hidden",
+            "page-shell h-full min-w-0 flex flex-col overflow-x-hidden",
             theme === 'light' ? "text-slate-900" : "text-slate-100"
         )}>
             {/* Header */}
@@ -646,7 +646,7 @@ const AiChatbot = () => {
                 isHeaderCollapsed ? "max-h-0 opacity-0" : "max-h-[420px] opacity-100"
             )}>
                 <header className={cn(
-                    "flex flex-col lg:flex-row items-start lg:items-center justify-between p-4 rounded-xl border backdrop-blur-md gap-4 transition-colors duration-300",
+                    "flex flex-col items-start justify-between p-3 md:p-4 rounded-xl border backdrop-blur-md gap-4 transition-colors duration-300 lg:flex-row lg:items-start",
                     theme === 'light'
                         ? "bg-white/80 border-slate-200 shadow-sm"
                         : "bg-slate-900/50 border-slate-700"
@@ -656,10 +656,10 @@ const AiChatbot = () => {
                             <Bot className="w-6 h-6 text-white" />
                         </div>
                         <div className="min-w-0">
-                            <h1 className={cn("text-xl font-bold truncate", theme === 'light' ? "text-slate-900" : "text-white")}>3D Printing AI Expert</h1>
-                            <div className="flex items-center gap-2 text-xs text-slate-400">
+                            <h1 className={cn("text-xl font-bold break-words", theme === 'light' ? "text-slate-900" : "text-white")}>3D Printing AI Expert</h1>
+                            <div className="flex items-start gap-2 text-xs text-slate-400">
                                 <Zap className="w-3 h-3 text-yellow-500" />
-                                <span className="truncate">Powered by {selectedModel}</span>
+                                <span className="break-all">Powered by {selectedModel}</span>
                             </div>
                         </div>
                     </div>
@@ -681,13 +681,13 @@ const AiChatbot = () => {
                         </button>
 
                         <div className={cn(
-                            "flex p-1 rounded-lg border w-full",
+                            "grid grid-cols-2 gap-1 p-1 rounded-lg border w-full",
                             theme === 'light' ? "bg-slate-100 border-slate-200" : "bg-slate-800 border-slate-700"
                         )}>
                             <button
                                 onClick={() => setMode('free')}
                                 className={cn(
-                                    "flex-1 px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2",
+                                    "px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2",
                                     mode === 'free'
                                         ? (theme === 'light' ? "bg-white text-slate-900 shadow-sm" : "bg-slate-700 text-white shadow-sm")
                                         : (theme === 'light' ? "text-slate-500 hover:text-slate-900" : "text-slate-400 hover:text-slate-200")
@@ -699,7 +699,7 @@ const AiChatbot = () => {
                             <button
                                 onClick={() => setMode('paid')}
                                 className={cn(
-                                    "flex-1 px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2",
+                                    "px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2",
                                     mode === 'paid'
                                         ? "bg-purple-600 text-white shadow-sm"
                                         : (theme === 'light' ? "text-slate-500 hover:text-slate-900" : "text-slate-400 hover:text-slate-200")
@@ -711,7 +711,8 @@ const AiChatbot = () => {
                         </div>
 
                         <div className={cn(
-                            "flex p-1 rounded-lg border w-full gap-1",
+                            "grid gap-1 p-1 rounded-lg border w-full",
+                            selectedModelOptions.length > 2 ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2",
                             theme === 'light' ? "bg-slate-100 border-slate-200" : "bg-slate-800 border-slate-700"
                         )}>
                             {selectedModelOptions.map((modelName) => {
@@ -723,7 +724,7 @@ const AiChatbot = () => {
                                         key={modelName}
                                         onClick={() => (mode === 'paid' ? setPaidModel(modelName) : setFreeModel(modelName))}
                                         className={cn(
-                                            "flex-1 min-w-0 px-3 py-1.5 rounded-md text-xs font-bold transition-all",
+                                            "min-w-0 px-3 py-2 rounded-md text-xs font-bold transition-all break-words",
                                             isActive
                                                 ? (isProModel
                                                     ? "bg-purple-600 text-white shadow-sm"
@@ -739,7 +740,7 @@ const AiChatbot = () => {
                         </div>
 
                         <div className={cn(
-                            "text-xs rounded-lg border px-3 py-1.5",
+                            "text-xs rounded-lg border px-3 py-2 break-words",
                             theme === 'light' ? "bg-slate-100 border-slate-200 text-slate-600" : "bg-slate-800/50 border-slate-700 text-slate-300"
                         )}>
                             {mode === 'free'
@@ -761,7 +762,7 @@ const AiChatbot = () => {
                 <div
                     ref={messagesContainerRef}
                     onScroll={handleMessagesScroll}
-                    className="flex-1 overflow-y-auto overflow-x-hidden p-3 md:p-4 space-y-5 md:space-y-6 custom-scrollbar"
+                    className="flex-1 overflow-y-auto overflow-x-hidden p-3 md:p-4 space-y-4 md:space-y-6 custom-scrollbar"
                 >
                     {messages.map((msg, idx) => (
                         <div key={idx} className={cn("flex min-w-0", msg.role === 'user' ? "justify-end" : "justify-start")}>
@@ -795,7 +796,7 @@ const AiChatbot = () => {
 
                                 {/* Image Preview in Message */}
                                 {msg.image && (
-                                    <div className="mb-3 rounded-lg overflow-hidden max-w-[300px] border border-slate-700/50">
+                                    <div className="mb-3 rounded-lg overflow-hidden max-w-full sm:max-w-[300px] border border-slate-700/50">
                                         <img src={msg.image} alt="Upload" className="w-full h-auto object-cover" />
                                     </div>
                                 )}
@@ -866,9 +867,9 @@ const AiChatbot = () => {
                     {/* Error Message */}
                     {error && (
                         <div className="flex justify-center my-4">
-                            <div className="bg-red-500/10 border border-red-500/50 text-red-500 px-4 py-3 rounded-lg flex items-center gap-2 text-sm shadow-sm backdrop-blur-sm">
+                            <div className="bg-red-500/10 border border-red-500/50 text-red-500 px-4 py-3 rounded-lg flex items-center gap-2 text-sm shadow-sm backdrop-blur-sm min-w-0">
                                 <AlertCircle className="w-4 h-4" />
-                                <span>{error}</span>
+                                <span className="break-words">{error}</span>
                             </div>
                         </div>
                     )}
@@ -987,12 +988,20 @@ const AiChatbot = () => {
                         </div>
                     </div>
                     {selectedImage && (
-                        <div className="mb-2 inline-flex items-center gap-2 bg-slate-800 text-slate-200 px-3 py-1.5 rounded-lg text-sm border border-slate-700">
-                            <ImageIcon className="w-4 h-4 text-blue-400" />
-                            <span className="truncate max-w-[200px]">{selectedImage.file.name}</span>
+                        <div className={cn(
+                            "mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-sm border min-w-0",
+                            theme === 'light'
+                                ? "bg-slate-100 text-slate-700 border-slate-200"
+                                : "bg-slate-800 text-slate-200 border-slate-700"
+                        )}>
+                            <ImageIcon className="w-4 h-4 text-blue-400 shrink-0" />
+                            <span className="min-w-0 break-all">{selectedImage.file.name}</span>
                             <button
                                 onClick={() => { setSelectedImage(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                                className="ml-2 hover:bg-slate-700 rounded-full p-0.5"
+                                className={cn(
+                                    "ml-auto rounded-full p-0.5 shrink-0",
+                                    theme === 'light' ? "hover:bg-slate-200" : "hover:bg-slate-700"
+                                )}
                             >
                                 <X className="w-3 h-3" />
                             </button>
@@ -1040,7 +1049,7 @@ const AiChatbot = () => {
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder={isDragging ? "이미지를 여기에 놓으세요" : "무엇이든 물어보세요... (Shift+Enter to send)"}
+                            placeholder={isDragging ? "이미지를 여기에 놓으세요" : (isMobile ? "질문을 입력하세요" : "출력 품질, 재료, 오류 원인을 물어보세요")}
                             className={cn(
                                 "flex-1 bg-transparent px-2 py-1 outline-none min-w-0 disabled:opacity-50",
                                 theme === 'light' ? "text-slate-900 placeholder:text-slate-400" : "text-white placeholder:text-slate-500"
@@ -1057,6 +1066,7 @@ const AiChatbot = () => {
                                     ? "bg-blue-600 text-white shadow-lg hover:bg-blue-500 hover:scale-105 active:scale-95"
                                     : "bg-slate-700 text-slate-500 cursor-not-allowed opacity-50"
                             )}
+                            aria-label="메시지 전송"
                         >
                             {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                         </button>

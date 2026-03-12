@@ -121,13 +121,6 @@ export const SettingsProvider = ({ children }) => {
             savedSettings[key] = readSettingValue(key, DEFAULT_SETTINGS[key]);
         });
 
-        // 기존 klipper-ip 마이그레이션: 8888 -> 7125
-        if (savedSettings.klipperIp && savedSettings.klipperIp.includes(':8888')) {
-            const migrated = savedSettings.klipperIp.replace(':8888', ':7125');
-            savedSettings.klipperIp = migrated;
-            writeSettingValue('klipperIp', migrated);
-        }
-
         // 레거시 평문 키 우선 로드 (암호화 키는 비동기 복호화로 후처리)
         if (localStorage.getItem(AI_FREE_API_KEY_STORAGE)) {
             savedSettings.aiFreeApiKey = localStorage.getItem(AI_FREE_API_KEY_STORAGE);

@@ -178,11 +178,11 @@ const ThreeDResources = () => {
     };
 
     return (
-        <div className="w-full space-y-6 animate-fade-in px-3 md:px-4">
-            <div className="flex items-center justify-between">
-                <div>
+        <div className="page-shell">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
                     <h1 className="text-2xl md:text-3xl font-black gradient-text gradient-primary">3D 리소스 허브</h1>
-                    <p className={cn('mt-1 text-sm md:text-base', theme === 'dark' ? 'text-slate-400' : 'text-slate-700')}>
+                    <p className={cn('mt-1 text-sm md:text-base break-words', theme === 'dark' ? 'text-slate-400' : 'text-slate-700')}>
                         자주 쓰는 루트를 빠르게 열고, 사이트를 태그/즐겨찾기로 관리하세요.
                     </p>
                 </div>
@@ -206,13 +206,13 @@ const ThreeDResources = () => {
                         <p className={cn('mt-1.5 text-xs md:text-sm', theme === 'dark' ? 'text-slate-400' : 'text-slate-600')}>
                             {flow.description}
                         </p>
-                        <div className="mt-3 flex gap-2">
+                        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                             {flow.links.map((link) => (
                                 <button
                                     key={link.url}
                                     onClick={(e) => openExternal(e, link.url)}
                                     className={cn(
-                                        'flex-1 rounded-lg px-2.5 py-2 text-xs font-bold border transition-colors',
+                                        'rounded-lg px-2.5 py-2 text-xs font-bold border transition-colors w-full',
                                         theme === 'dark'
                                             ? 'bg-slate-800 border-slate-600 text-slate-100 hover:bg-slate-700'
                                             : 'bg-slate-50 border-slate-300 text-slate-800 hover:bg-slate-100'
@@ -232,26 +232,28 @@ const ThreeDResources = () => {
                     theme === 'dark' ? 'bg-slate-900/60 border-slate-700' : 'bg-white border-slate-200 shadow-sm'
                 )}
             >
-                <div
-                    className={cn(
-                        'flex items-center gap-2 rounded-xl border px-3 py-2',
-                        theme === 'dark' ? 'bg-slate-950/50 border-slate-700' : 'bg-slate-50 border-slate-200'
-                    )}
-                >
-                    <Search className={cn('w-4 h-4', theme === 'dark' ? 'text-slate-400' : 'text-slate-500')} />
-                    <input
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="사이트·태그 검색"
+                <div className="flex flex-col gap-2 sm:flex-row">
+                    <div
                         className={cn(
-                            'w-full min-w-0 bg-transparent outline-none text-sm',
-                            theme === 'dark' ? 'text-slate-100 placeholder:text-slate-500' : 'text-slate-800 placeholder:text-slate-400'
+                            'flex min-w-0 items-center gap-2 rounded-xl border px-3 py-2 flex-1',
+                            theme === 'dark' ? 'bg-slate-950/50 border-slate-700' : 'bg-slate-50 border-slate-200'
                         )}
-                    />
+                    >
+                        <Search className={cn('w-4 h-4 shrink-0', theme === 'dark' ? 'text-slate-400' : 'text-slate-500')} />
+                        <input
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            placeholder="사이트·태그 검색"
+                            className={cn(
+                                'w-full min-w-0 bg-transparent outline-none text-sm',
+                                theme === 'dark' ? 'text-slate-100 placeholder:text-slate-500' : 'text-slate-800 placeholder:text-slate-400'
+                            )}
+                        />
+                    </div>
                     <button
                         onClick={() => setShowFavoritesOnly((v) => !v)}
                         className={cn(
-                            'px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors shrink-0 whitespace-nowrap min-w-[92px]',
+                            'px-3 py-2 rounded-lg text-xs font-bold border transition-colors whitespace-nowrap w-full sm:w-auto',
                             showFavoritesOnly
                                 ? 'bg-amber-500 text-white border-amber-500'
                                 : theme === 'dark'
@@ -263,7 +265,7 @@ const ThreeDResources = () => {
                     </button>
                 </div>
 
-                <div className="flex flex-col md:flex-row gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
@@ -327,7 +329,7 @@ const ThreeDResources = () => {
 
             <div
                 className={cn(
-                    'rounded-xl px-3 py-2 text-xs md:text-sm flex items-center justify-between',
+                    'rounded-xl px-3 py-2 text-xs md:text-sm flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between',
                     theme === 'dark' ? 'bg-slate-900/50 border border-slate-800 text-slate-300' : 'bg-slate-50 border border-slate-200 text-slate-700'
                 )}
             >
@@ -356,8 +358,8 @@ const ThreeDResources = () => {
                                     {site.icon}
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2">
-                                        <h3 className={cn('font-black truncate', theme === 'dark' ? 'text-white' : 'text-slate-900')}>{site.name}</h3>
+                                    <div className="flex items-start gap-2">
+                                        <h3 className={cn('font-black break-words', theme === 'dark' ? 'text-white' : 'text-slate-900')}>{site.name}</h3>
                                         <ExternalLink className={cn('w-4 h-4 shrink-0', theme === 'dark' ? 'text-slate-500' : 'text-slate-500')} />
                                     </div>
                                     <p className={cn('text-sm mt-1 line-clamp-2', theme === 'dark' ? 'text-slate-400' : 'text-slate-700')}>
@@ -380,11 +382,11 @@ const ThreeDResources = () => {
                                 ))}
                             </div>
 
-                            <div className="mt-4 grid grid-cols-3 gap-2">
+                            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
                                 <button
                                     onClick={(e) => openExternal(e, site.url)}
                                     className={cn(
-                                        'px-2.5 py-1.5 rounded-lg text-xs font-bold border inline-flex items-center justify-center gap-1.5 transition-colors',
+                                        'px-2.5 py-1.5 rounded-lg text-xs font-bold border inline-flex items-center justify-center gap-1.5 transition-colors col-span-2 sm:col-span-1',
                                         theme === 'dark'
                                             ? 'border-slate-600 text-slate-200 hover:bg-slate-800'
                                             : 'border-slate-300 text-slate-800 hover:bg-slate-100'

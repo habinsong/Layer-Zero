@@ -60,28 +60,28 @@ const PrinterView = () => {
 
     return (
         /* [수정] h-full과 flex-col로 부모(Outlet)가 준 모든 높이를 사용함 */
-        <div className="flex-1 h-full w-full flex flex-col animate-fade-in p-2 md:p-0 gap-4 overflow-hidden">
+        <div className="page-shell flex-1 h-full min-w-0 flex flex-col overflow-hidden">
 
             {/* 헤더: shrink-0으로 자기 높이만 딱 가짐 */}
             <header className="premium-card shrink-0">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="flex min-w-0 items-start gap-3 md:gap-4">
                         <div className="p-2 md:p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg">
                             <Printer className="w-5 h-5 md:w-8 md:h-8 text-white" />
                         </div>
-                        <div>
-                            <h2 className="text-xl md:text-3xl font-black gradient-primary gradient-text leading-none">{printerName}</h2>
-                            <p className="text-[10px] md:text-sm text-slate-400 font-mono mt-1 flex items-center gap-1.5">
+                        <div className="min-w-0">
+                            <h2 className="text-xl md:text-3xl font-black gradient-primary gradient-text leading-none break-words">{printerName}</h2>
+                            <p className="mt-1 flex items-start gap-1.5 text-[10px] md:text-sm text-slate-400 font-mono break-all">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                 {displayUrl}
                             </p>
                         </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:w-auto">
                         <button
                             onClick={isEmbedded ? () => setIsEmbedded(false) : handleOpenEmbed}
                             disabled={!displayUrl}
-                            className="glass-button p-2 md:px-4 md:py-2.5 rounded-xl flex items-center gap-2 text-xs md:text-base disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="glass-button px-3 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs md:text-base disabled:opacity-40 disabled:cursor-not-allowed w-full"
                         >
                             <span className="hidden sm:inline">{isEmbedded ? '임베드 닫기' : '임베드 열기'}</span>
                             <span className="sm:hidden">{isEmbedded ? '닫기' : '열기'}</span>
@@ -89,7 +89,7 @@ const PrinterView = () => {
                         <button
                             onClick={handleRefresh}
                             disabled={!displayUrl || !isEmbedded}
-                            className="glass-button p-2 md:px-4 md:py-2.5 rounded-xl flex items-center gap-2 text-xs md:text-base disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="glass-button px-3 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs md:text-base disabled:opacity-40 disabled:cursor-not-allowed w-full"
                         >
                             <RefreshCw className={`w-4 h-4 md:w-5 md:h-5 ${isLoading ? 'animate-spin' : ''}`} />
                             <span className="hidden sm:inline">새로고침</span>
@@ -99,7 +99,7 @@ const PrinterView = () => {
                                 href={displayUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="p-2 md:px-4 md:py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl text-xs md:text-base font-medium flex items-center gap-2"
+                                className="px-3 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl text-xs md:text-base font-medium flex items-center justify-center gap-2 w-full"
                             >
                                 <ExternalLink className="w-4 h-4 md:w-5 md:h-5" />
                                 <span className="hidden sm:inline">새 탭</span>
@@ -129,10 +129,10 @@ const PrinterView = () => {
                                     외부 프린터 UI iframe은 메모리를 크게 쓰기 때문에 필요할 때만 열도록 바꿨습니다.
                                 </p>
                             </div>
-                            <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+                            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-center">
                                 <button
                                     onClick={handleOpenEmbed}
-                                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-sm font-bold"
+                                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-sm font-bold w-full sm:w-auto"
                                 >
                                     이 페이지 안에서 열기
                                 </button>
@@ -140,7 +140,7 @@ const PrinterView = () => {
                                     href={displayUrl}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="px-4 py-2.5 rounded-xl border border-slate-600 text-slate-200 text-sm font-bold hover:bg-slate-800"
+                                    className="px-4 py-2.5 rounded-xl border border-slate-600 text-slate-200 text-sm font-bold hover:bg-slate-800 w-full sm:w-auto"
                                 >
                                     새 탭에서 열기
                                 </a>

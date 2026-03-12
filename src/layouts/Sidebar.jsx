@@ -32,7 +32,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     return (
         <aside className={cn(
             // 기본 스타일 (모바일 기준)
-            "fixed inset-y-0 left-0 z-40 w-64 h-full flex flex-col transition-all duration-300 ease-in-out overflow-hidden border-r border-slate-200 dark:border-slate-800",
+            "fixed inset-y-0 left-0 z-40 w-72 max-w-[85vw] h-full flex flex-col transition-all duration-300 ease-in-out overflow-hidden border-r border-slate-200 dark:border-slate-800",
             // 모바일 토글 상태
             isOpen ? "translate-x-0" : "-translate-x-full",
             // 데스크탑 스타일 (항상 translate-x-0, 너비로 제어)
@@ -94,7 +94,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                             to={item.path}
                             className={({ isActive }) =>
                                 cn(
-                                    "group flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 relative overflow-hidden",
+                                    "group flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 relative overflow-hidden min-w-0",
                                     isActive
                                         ? "text-white shadow-lg"
                                         : (theme === 'dark' ? "text-slate-400 hover:text-white" : "text-slate-500 hover:text-slate-900")
@@ -140,7 +140,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
                                     {/* 텍스트 */}
                                     <span className={cn(
-                                        "font-medium relative z-10 transition-all duration-300",
+                                        "font-medium relative z-10 transition-all duration-300 truncate",
                                         isActive && "font-bold",
                                         isActive
                                             ? (theme === 'dark' ? "text-white" : "text-slate-900") // 라이트모드 활성 시 검은 글씨

@@ -449,26 +449,26 @@ const SettingsPage = () => {
     }, [defaultSettings, formState, settings]);
 
     return (
-        <div className="w-full space-y-6 animate-fade-in px-3 md:px-4 pb-4">
+        <div className="page-shell">
             <header className="premium-card">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 animate-glow-pulse">
+                    <div className="flex items-start gap-3 md:gap-4 min-w-0">
+                        <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 animate-glow-pulse shrink-0">
                             <SettingsIcon className="w-6 h-6 md:w-8 md:h-8 text-white" />
                         </div>
-                        <div>
-                            <h1 className="text-2xl md:text-4xl font-black gradient-primary gradient-text">설정 센터</h1>
-                            <p className="text-sm md:text-base text-slate-500 mt-1">연결/성능/알림/보안을 한 번에 관리</p>
+                        <div className="min-w-0">
+                            <h1 className="text-[1.75rem] md:text-4xl font-black gradient-primary gradient-text leading-tight">설정 센터</h1>
+                            <p className="text-sm md:text-base text-slate-500 mt-1 break-words">연결/성능/알림/보안을 한 번에 관리</p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <div className={cn('px-3 py-2 rounded-lg text-xs border', theme === 'dark' ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-600')}>
+                    <div className="flex w-full md:w-auto flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <div className={cn('px-3 py-2 rounded-lg text-xs border text-center', theme === 'dark' ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-600')}>
                             변경 {changedCount}개
                         </div>
                         <button
                             onClick={handleSaveAll}
-                            className="px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-xl transition-all text-sm md:text-base font-black flex items-center gap-2 shadow-lg"
+                            className="w-full sm:w-auto px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-xl transition-all text-sm md:text-base font-black flex items-center justify-center gap-2 shadow-lg"
                         >
                             {showSaved ? <Check className="w-4 h-4 md:w-5 md:h-5" /> : <Save className="w-4 h-4 md:w-5 md:h-5" />}
                             {showSaved ? '저장됨' : '저장'}
@@ -583,15 +583,17 @@ const SettingsPage = () => {
                         </div>
                     </div>
 
-                    <div className="mt-4 flex items-center gap-2">
+                    <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                         <button
                             onClick={testConnections}
                             disabled={isTesting}
-                            className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold inline-flex items-center gap-2 disabled:opacity-60"
+                            className="w-full sm:w-auto px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-60"
                         >
                             <Link2 className="w-4 h-4" /> 연결 테스트
                         </button>
-                        <div className="text-xs text-slate-500">Moonraker: {testResult.moonraker || '-'} / Webcam1: {testResult.webcam || '-'} / Webcam2: {testResult.webcam2 || '-'}</div>
+                        <div className={cn('w-full min-w-0 rounded-lg border px-3 py-2 text-[11px] leading-relaxed break-all', theme === 'dark' ? 'border-slate-700 bg-slate-900/40 text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-500')}>
+                            Moonraker: {testResult.moonraker || '-'} / Webcam1: {testResult.webcam || '-'} / Webcam2: {testResult.webcam2 || '-'}
+                        </div>
                     </div>
                 </section>
 
@@ -659,7 +661,7 @@ const SettingsPage = () => {
 
                         <div className={cn('p-3 rounded-xl border', theme === 'dark' ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200')}>
                             <div className="text-xs font-bold text-slate-500 mb-2">빠른 프리셋</div>
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                 <button onClick={() => { handleChange('dashboardPollMs', 3000); handleChange('dashboardStatsPollMs', 30000); }} className="px-2 py-2 rounded-lg text-xs font-bold border bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700">고속</button>
                                 <button onClick={() => { handleChange('dashboardPollMs', 5000); handleChange('dashboardStatsPollMs', 60000); }} className="px-2 py-2 rounded-lg text-xs font-bold border bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700">균형</button>
                                 <button onClick={() => { handleChange('dashboardPollMs', 10000); handleChange('dashboardStatsPollMs', 120000); }} className="px-2 py-2 rounded-lg text-xs font-bold border bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700">절전</button>
@@ -676,7 +678,7 @@ const SettingsPage = () => {
 
                     <div className="space-y-3">
                         <div className={cn('p-3 rounded-xl border', theme === 'dark' ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200')}>
-                            <div className="flex items-center justify-between gap-3">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                                 <div>
                                     <p className="font-bold">브라우저 권한</p>
                                     <p className="text-xs text-slate-500">현재: {notificationPermission}</p>
@@ -685,7 +687,7 @@ const SettingsPage = () => {
                                     )}
                                 </div>
                                 {notificationPermission !== 'granted' && (
-                                    <button onClick={handleRequestNotification} className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold">권한 요청</button>
+                                    <button onClick={handleRequestNotification} className="w-full sm:w-auto px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold">권한 요청</button>
                                 )}
                             </div>
                         </div>
@@ -764,12 +766,12 @@ const SettingsPage = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div className={cn('p-3 rounded-xl border', theme === 'dark' ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200')}>
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                                 <div>
                                     <div className="font-bold text-sm">테마</div>
                                     <div className="text-xs text-slate-500">현재: {theme}</div>
                                 </div>
-                                <button onClick={toggleTheme} className="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold inline-flex items-center gap-1.5">
+                                <button onClick={toggleTheme} className="w-full sm:w-auto px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5">
                                     {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />} 전환
                                 </button>
                             </div>
@@ -813,14 +815,14 @@ const SettingsPage = () => {
                     <div className="space-y-2 max-h-56 overflow-y-auto custom-scrollbar">
                         {connectionProfiles.length === 0 && <div className="text-sm text-slate-500">저장된 프로필이 없습니다.</div>}
                         {connectionProfiles.map((profile) => (
-                            <div key={profile.id} className={cn('p-3 rounded-xl border flex items-center justify-between gap-3', theme === 'dark' ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200')}>
+                            <div key={profile.id} className={cn('p-3 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3', theme === 'dark' ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200')}>
                                 <div className="min-w-0">
                                     <div className="font-bold truncate">{profile.name}</div>
-                                    <div className="text-xs text-slate-500 truncate">{profile.klipperIp} / CAM1:{profile.webcamUrl || '-'} / CAM2:{profile.webcamUrl2 || '-'}</div>
+                                    <div className="text-xs text-slate-500 break-all sm:truncate">{profile.klipperIp} / CAM1:{profile.webcamUrl || '-'} / CAM2:{profile.webcamUrl2 || '-'}</div>
                                 </div>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                    <button onClick={() => applyProfile(profile)} className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold">적용</button>
-                                    <button onClick={() => removeProfile(profile.id)} className="px-2.5 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold">삭제</button>
+                                <div className="flex w-full sm:w-auto items-center gap-1.5 shrink-0">
+                                    <button onClick={() => applyProfile(profile)} className="flex-1 sm:flex-none px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold">적용</button>
+                                    <button onClick={() => removeProfile(profile.id)} className="flex-1 sm:flex-none px-2.5 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold">삭제</button>
                                 </div>
                             </div>
                         ))}
@@ -833,15 +835,15 @@ const SettingsPage = () => {
                         <h3 className="text-xl font-black gradient-primary gradient-text">백업 & 초기화</h3>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
-                        <button onClick={exportSettings} className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold inline-flex items-center gap-1.5">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <button onClick={exportSettings} className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5">
                             <Download className="w-4 h-4" /> 설정 내보내기
                         </button>
-                        <button onClick={() => importRef.current?.click()} disabled={isImporting} className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold inline-flex items-center gap-1.5 disabled:opacity-60">
+                        <button onClick={() => importRef.current?.click()} disabled={isImporting} className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-60">
                             <Upload className="w-4 h-4" /> 설정 불러오기
                         </button>
                         <input ref={importRef} type="file" accept="application/json" className="hidden" onChange={onImportFile} />
-                        <button onClick={resetAllSettings} className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold inline-flex items-center gap-1.5">
+                        <button onClick={resetAllSettings} className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5">
                             <RotateCcw className="w-4 h-4" /> 전체 초기화
                         </button>
                     </div>

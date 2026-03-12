@@ -1028,7 +1028,7 @@ const HomePage = () => {
         }
     };
     return (
-        <div className="w-full space-y-4 animate-fade-in">
+        <div className="page-shell">
             {/* 1. 상태 대시보드 */}
             <CollapsibleSection title="상태 대시보드" icon={Activity} defaultOpen={true}>
                 <div>
@@ -1145,7 +1145,7 @@ const HomePage = () => {
                                             </div>
                                             <div className="rounded-xl bg-white/80 dark:bg-slate-800/80 px-3 py-2 border border-cyan-100 dark:border-slate-700">
                                                 <div className="text-[11px] text-slate-500">미세먼지</div>
-                                                <div className="text-sm font-black text-slate-700 dark:text-slate-200 truncate">
+                                                <div className="text-sm font-black text-slate-700 dark:text-slate-200 break-words">
                                                     {weatherText.pm}
                                                 </div>
                                             </div>
@@ -1251,11 +1251,11 @@ const HomePage = () => {
                                                 {realtime.connected ? 'WS 실시간' : 'HTTP 폴백'}
                                             </span>
                                         </div>
-                                        <div className={cn("text-xl md:text-3xl font-black truncate", printProgress.progress > 0 ? "text-green-500" : "text-slate-500")}>
+                                        <div className={cn("text-xl md:text-3xl font-black break-words", printProgress.progress > 0 ? "text-green-500" : "text-slate-500")}>
                                             {getStatusText(printerStatus.state)}
                                         </div>
                                         {printProgress.progress > 0 && (
-                                            <div className="text-xs md:text-sm text-slate-500 mt-1 font-medium truncate w-full">
+                                            <div className="text-xs md:text-sm text-slate-500 mt-1 font-medium break-words line-clamp-2 w-full">
                                                 {printProgress.filename}
                                             </div>
                                         )}
@@ -1327,7 +1327,7 @@ const HomePage = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div className="grid grid-cols-1 gap-4 mt-4 sm:grid-cols-2">
                         <div className="premium-card p-4">
                             <div className="flex justify-between items-center mb-2"><div className="text-sm font-bold text-slate-400">노즐 온도</div><Thermometer className="w-4 h-4 text-orange-500" /></div>
                             <div className="flex items-baseline gap-2"><span className="text-lg md:text-2xl font-black text-orange-500">{extraStatus.extruderTemp.toFixed(1)}°C</span><span className="text-xs md:text-sm text-slate-500">/ {extraStatus.extruderTarget}°C</span></div>
@@ -1360,7 +1360,7 @@ const HomePage = () => {
                                 )}
                             </div>
                             <hr className={cn("border-t", theme === 'dark' ? "border-slate-800" : "border-slate-100")} />
-                            <div className="grid grid-cols-4 gap-3 mt-4">
+                            <div className="grid grid-cols-2 gap-3 mt-4 sm:grid-cols-4">
                                 <button onClick={() => handleQuickActionCommand({ label: 'G28 (홈)', script: 'G28', confirm: true })} disabled={controlLoading} className={cn("p-2 md:p-4 rounded-xl font-black text-white transition-all relative overflow-hidden group flex flex-col items-center justify-center gap-1 md:gap-2", "bg-gradient-to-br from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700", controlLoading && "opacity-50")}><HomeIcon className="w-5 h-5 md:w-8 md:h-8" /><span className="text-[10px] md:text-sm whitespace-nowrap">G28 (홈)</span></button>
                                 <button onClick={handleEmergencyStop} disabled={controlLoading} className={cn("p-2 md:p-4 rounded-xl font-black text-white transition-all relative overflow-hidden group flex flex-col items-center justify-center gap-1 md:gap-2", isEmergencyConfirm ? "bg-red-600 animate-pulse" : "bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700", controlLoading && "opacity-50")}><AlertTriangle className="w-5 h-5 md:w-8 md:h-8" /><span className="text-[10px] md:text-sm whitespace-nowrap">{isEmergencyConfirm ? '확인!' : '비상정지'}</span></button>
                                 <button onClick={handlePauseResume} disabled={controlLoading} className={cn("p-2 md:p-4 rounded-xl font-black text-white transition-all relative overflow-hidden group flex flex-col items-center justify-center gap-1 md:gap-2", printerStatus.state === 'complete' ? "bg-gradient-to-br from-green-500 to-emerald-600" : "bg-gradient-to-br from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600", controlLoading && "opacity-50")}>{printerStatus.state === 'complete' ? (<CheckCircle2 className="w-5 h-5 md:w-8 md:h-8" />) : printerStatus.state === 'paused' ? (<Play className="w-5 h-5 md:w-8 md:h-8" />) : (<Pause className="w-5 h-5 md:w-8 md:h-8" />)}<span className="text-[10px] md:text-sm whitespace-nowrap">{printerStatus.state === 'complete' ? '완료 확인' : printerStatus.state === 'paused' ? '재개' : '일시정지'}</span></button>
@@ -1431,7 +1431,7 @@ const HomePage = () => {
                                         콘솔 명령
                                     </div>
                                     <div className="space-y-2.5">
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                                             <input
                                                 value={consoleCommand}
                                                 onChange={(e) => setConsoleCommand(e.target.value)}
@@ -1442,12 +1442,12 @@ const HomePage = () => {
                                                     }
                                                 }}
                                                 placeholder="예: M117 Hello"
-                                                className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
+                                                className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 w-full"
                                             />
                                             <button
                                                 onClick={() => handleSendConsoleCommand()}
                                                 disabled={controlLoading || !consoleCommand.trim()}
-                                                className="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
+                                                className="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1 w-full sm:w-auto"
                                             >
                                                 <Send className="w-3.5 h-3.5" />
                                                 전송

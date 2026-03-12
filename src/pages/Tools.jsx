@@ -53,11 +53,11 @@ const ToolCard = ({ theme, icon, title, subtitle, accent = 'text-blue-400', chil
     const Icon = icon;
     return (
         <section className={cn(cardBase, theme === 'light' ? 'bg-white' : '')}>
-            <div className="flex items-center gap-3 mb-4">
+            <div className="mb-4 flex items-start gap-3">
                 <Icon className={cn('w-5 h-5 md:w-6 md:h-6', accent)} />
-                <div>
+                <div className="min-w-0">
                     <h2 className="text-lg md:text-xl font-black">{title}</h2>
-                    {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+                    {subtitle && <p className="text-xs text-slate-500 mt-0.5 break-words">{subtitle}</p>}
                 </div>
             </div>
             {children}
@@ -112,7 +112,7 @@ const EStepCalculator = ({ theme }) => {
                     <div className="text-xs text-slate-500">새 E-step</div>
                     <div className="text-2xl font-black text-blue-500">{newEstep.toFixed(2)} steps/mm</div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <CopyButton text={gcode} label="E-step G-code 복사" />
                     <span className="text-xs text-slate-500">압출 전 `G92 E0`, 냉간압출 허용 여부 확인</span>
                 </div>
@@ -392,9 +392,9 @@ const FailureTriage = ({ theme }) => {
                         {advice.fix.map((f) => <div key={f}>• {f}</div>)}
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <CopyButton text={advice.quick} label="즉시 테스트 명령 복사" />
-                    <span className="text-xs text-slate-500 font-mono">{advice.quick}</span>
+                    <span className="text-xs text-slate-500 font-mono break-all">{advice.quick}</span>
                 </div>
             </div>
         </ToolCard>
@@ -425,7 +425,7 @@ const ToolRecipes = ({ theme }) => {
             <div className="space-y-2.5">
                 {recipes.map((r) => (
                     <div key={r.name} className="p-3 rounded-lg border bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-700">
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                             <div className="flex items-center gap-2 min-w-0">
                                 <r.icon className="w-4 h-4 text-yellow-500 shrink-0" />
                                 <div className="text-sm font-bold truncate">{r.name}</div>
@@ -619,19 +619,19 @@ const Tools = () => {
     const { theme } = useTheme();
 
     return (
-        <div className="w-full space-y-6 animate-fade-in px-3 md:px-4">
+        <div className="page-shell">
             <header className="premium-card">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="flex items-start gap-4">
                         <div className="p-3 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 animate-glow-pulse">
                             <Bot className="w-6 h-6 md:w-8 md:h-8 text-white" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                             <h1 className="text-2xl md:text-4xl font-black gradient-primary gradient-text">도구 랩</h1>
-                            <p className="text-sm md:text-base text-slate-500 mt-1">캘리브레이션, 진단, G-code 생성까지 한 화면에서 처리</p>
+                            <p className="text-sm md:text-base text-slate-500 mt-1 break-words">캘리브레이션, 진단, G-code 생성까지 한 화면에서 처리</p>
                         </div>
                     </div>
-                    <div className={cn('rounded-xl border px-3 py-2 text-xs md:text-sm inline-flex items-center gap-2 self-start md:self-auto', theme === 'light' ? 'bg-slate-50 border-slate-200 text-slate-600' : 'bg-slate-900/50 border-slate-700 text-slate-300')}>
+                    <div className={cn('rounded-xl border px-3 py-2 text-xs md:text-sm inline-flex items-center gap-2 self-start md:self-auto break-words', theme === 'light' ? 'bg-slate-50 border-slate-200 text-slate-600' : 'bg-slate-900/50 border-slate-700 text-slate-300')}>
                         <Info className="w-4 h-4" />
                         명령은 반드시 프린터 상태를 확인한 뒤 실행하세요.
                     </div>

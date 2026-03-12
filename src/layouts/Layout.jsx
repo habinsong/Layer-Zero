@@ -84,7 +84,7 @@ const Layout = () => {
                     <span className="text-lg font-black tracking-tighter leading-none bg-clip-text text-transparent bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500">
                         Layer Zero
                     </span>
-                    <span className="text-[0.55rem] font-bold text-slate-500 tracking-[0.3em] leading-none opacity-80 mt-0.5">
+                    <span className="hidden sm:block text-[0.55rem] font-bold text-slate-500 tracking-[0.3em] leading-none opacity-80 mt-0.5">
                         Absolute Control for Your Workspace
                     </span>
                 </div>
@@ -123,7 +123,7 @@ const Layout = () => {
                         ${!isSidebarOpen ? 'pt-[calc(3.5rem+env(safe-area-inset-top,0px))]' : 'pt-[env(safe-area-inset-top,0px)]'}
                         md:pt-0`} style={{ scrollbarGutter: "stable both-edges" }}>
 
-                        <div className="flex-1 flex flex-col w-full h-full md:p-8">
+                        <div className="flex-1 flex flex-col w-full h-full min-w-0 md:px-6 md:py-6 lg:px-8 lg:py-8 max-w-[1680px] mx-auto">
                             <Outlet />
                         </div>
                     </div>

@@ -1,18 +1,10 @@
 // src/api/moonrakerApi.js
 import { APP_ENV } from '../config/env';
 
-// Vite proxy를 통해 CORS 문제 해결 (vite.config.js에서 /api -> 프린터IP로 포워딩)
+// 설정 탭의 프린터 주소를 항상 1순위 연결 소스로 사용한다.
 const MOONRAKER_BASE_URL = '/api';
 const DEFAULT_MOONRAKER_PORT = '7125';
 const FALLBACK_KLIPPER_IP = APP_ENV.moonrakerFallbackIp || '';
-
-function shouldPreferProxyMoonraker() {
-    if (typeof window === 'undefined') return false;
-    const host = window.location.hostname;
-    const port = window.location.port;
-    const isLocalHost = host === '127.0.0.1' || host === 'localhost';
-    return isLocalHost && (port === '5173' || port === '4173');
-}
 
 function normalizeMoonrakerBase(rawValue) {
     if (!rawValue) return null;
@@ -41,11 +33,6 @@ function normalizeMoonrakerBase(rawValue) {
 }
 
 function getMoonrakerCandidates() {
-    const preferProxy = shouldPreferProxyMoonraker();
-    if (preferProxy) {
-        return [MOONRAKER_BASE_URL];
-    }
-
     const candidates = [];
     if (typeof window !== 'undefined') {
         const savedIp = localStorage.getItem('klipper-ip');
@@ -58,6 +45,7 @@ function getMoonrakerCandidates() {
         }
     }
 
+    // 개발 프록시는 CORS/네트워크 예외 상황용 마지막 폴백으로만 둔다.
     candidates.push(MOONRAKER_BASE_URL);
 
     return [...new Set(candidates)];
