@@ -2,6 +2,7 @@
 
 # Layer Zero
 
+<p><strong>3D 프린팅 출력 스트레스를 없애는 방법, 레이어 제로.</strong></p>
 <p><strong>Klipper + Moonraker 기반 3D 프린터를 위한 모바일 친화형 통합 운영 콘솔</strong></p>
 
 <p>
